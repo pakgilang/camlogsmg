@@ -1661,23 +1661,26 @@
   // =============================
   // UPLOAD (Netlify -> GAS API)
   // =============================
-  function apiPost(action, data, cb) {
-    if (!hasApi()) return cb && cb(new Error("Missing config.js GAS_API_URL / API_KEY"));
+   function apiPost(action, data, cb) {
+     if (!hasApi()) return cb && cb(new Error("Missing config.js GAS_API_URL / API_KEY"));
+   
+     var body = new URLSearchParams();
+     body.set("action", action);
+     body.set("key", API_KEY);
+     body.set("data", JSON.stringify(data || {}));
+   
+     fetch(GAS_API_URL, {
+       method: "POST",
+       headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+       body: body.toString(),
+       mode: "cors",
+       cache: "no-store"
+     })
+       .then(function (r) { return r.json(); })
+       .then(function (j) { cb && cb(null, j); })
+       .catch(function (e) { cb && cb(e); });
+   }
 
-    var url = GAS_API_URL;
-    var payload = { action: action, key: API_KEY, data: data || {} };
-
-    fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify(payload),
-      mode: "cors",
-      cache: "no-store"
-    })
-      .then(function (r) { return r.json(); })
-      .then(function (j) { cb && cb(null, j); })
-      .catch(function (e) { cb && cb(e); });
-  }
 
   function refreshStats() {
     var poCount = poQueue.length;
@@ -2057,7 +2060,7 @@
 
     res.innerHTML = '<div class="text-center text-xs text-slate-400 mt-4">Mencari...</div>';
 
-    apiGet("searchByPO", { noPo: q }, function (err, data) {
+    apiGet("searchByPO", { q: q }, function (err, data) {
       res.innerHTML = "";
       if (err) {
         res.innerHTML = '<div class="text-center text-xs text-red-400 mt-4">Gagal.</div>';
@@ -2276,3 +2279,4 @@
   });
 
 })();
+

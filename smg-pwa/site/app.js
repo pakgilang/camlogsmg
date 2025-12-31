@@ -2247,28 +2247,39 @@
     } catch (e) {}
   }
 
-  function bindUi() {
-   // menu button (hindari click "tembus" ke backdrop)
-on($("btn-menu"), "click", function (e) {
-  try { e.preventDefault(); } catch (x) {}
-  try { e.stopPropagation(); } catch (x2) {}
-  toggleMenu();
-});
+function bindUi() {
+    // 1. Logic Tombol Menu
+    var btnMenu = $("btn-menu");
+    if (btnMenu) {
+      btnMenu.onclick = function(e) {
+        // Stop bubbling agar tidak langsung menutup menu jika ada logic lain
+        e.preventDefault();
+        e.stopPropagation();
+        toggleMenu();
+      };
+    }
 
-// close hanya kalau klik backdrop
-on($("main-menu-backdrop"), "click", function (e) {
-  try { e.stopPropagation(); } catch (_) {}
-  closeMenu();
-});
+    // 2. Logic Backdrop (Tutup jika klik area gelap)
+    var backdrop = $("main-menu-backdrop");
+    if (backdrop) {
+      backdrop.onclick = function(e) {
+        e.stopPropagation();
+        closeMenu();
+      };
+    }
 
-// klik di kartu menu jangan menutup
-on($("main-menu-card"), "click", function (e) {
-  try { e.stopPropagation(); } catch (_) {}
-});
+    // 3. Logic Card (Jangan tutup jika klik di dalam kotak putih menu)
+    var card = $("main-menu-card");
+    if (card) {
+      card.onclick = function(e) {
+        e.stopPropagation();
+      };
+    }
 
-    on($("nav-form"), "click", function (e) { e.stopPropagation(); navigate("form"); });
-    on($("nav-data"), "click", function (e) { e.stopPropagation(); navigate("data"); });
-    on($("nav-search"), "click", function (e) { e.stopPropagation(); navigate("search"); });
+    // Navigasi Item
+    on($("nav-form"), "click", function (e) { navigate("form"); });
+    on($("nav-data"), "click", function (e) { navigate("data"); });
+    on($("nav-search"), "click", function (e) { navigate("search"); });
 
     // overlay buttons
     on($("ovX"), "click", function () { ovClose(false); });
@@ -2363,3 +2374,4 @@ on($("main-menu-card"), "click", function (e) {
   });
 
 })();
+

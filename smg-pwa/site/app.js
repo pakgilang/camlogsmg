@@ -1,5 +1,3 @@
-app.js saya seperti ini
-
 /* app.js — CAMLOG/SMG PWA (Netlify static) + GAS API
    - Mengandalkan /config.js (dibuat saat build Netlify oleh build-config.js)
    - Single file, tanpa framework, ringan
@@ -2062,7 +2060,7 @@ app.js saya seperti ini
 
     res.innerHTML = '<div class="text-center text-xs text-slate-400 mt-4">Mencari...</div>';
 
-    apiGet("searchByPO", { noPo: q }, function (err, data) {
+    apiGet("searchByPO", { q: q }, function (err, data) {
       res.innerHTML = "";
       if (err) {
         res.innerHTML = '<div class="text-center text-xs text-red-400 mt-4">Gagal.</div>';
@@ -2281,3 +2279,4 @@ app.js saya seperti ini
   });
 
 })();
+

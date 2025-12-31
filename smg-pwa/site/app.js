@@ -2248,7 +2248,11 @@
 
   function bindUi() {
     // menu
-    on($("btn-menu"), "click", function (e) { try { e.preventDefault(); } catch (x) {} toggleMenu(); });
+   on($("btn-menu"), "click", function (e) {
+     try { e.preventDefault(); } catch (x) {}
+     try { e.stopPropagation(); } catch (x2) {}
+     toggleMenu();
+   });
     on($("main-menu"), "click", function () { closeMenu(); });
     on($("nav-form"), "click", function (e) { e.stopPropagation(); navigate("form"); });
     on($("nav-data"), "click", function (e) { e.stopPropagation(); navigate("data"); });
@@ -2347,5 +2351,6 @@
   });
 
 })();
+
 
 

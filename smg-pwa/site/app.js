@@ -112,12 +112,13 @@
   var OV = { open: false, resolver: null, mode: "alert", allowClose: true };
 
   function escapeHtml(s) {
+    // FIX: Menggunakan entity HTML yang benar untuk replace quote
     return String(s || "")
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
+      .replace(/'/g, "&#039;");
   }
 
   function escapeAttr(s) {
@@ -2362,8 +2363,3 @@ on($("main-menu-card"), "click", function (e) {
   });
 
 })();
-
-
-
-
-

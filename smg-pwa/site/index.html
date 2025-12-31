@@ -167,69 +167,68 @@
   </svg>
 
   <div id="app-root">
-    <!-- HEADER -->
-  <div class="bg-blue-700 text-white shadow-md sticky top-0 z-50 w-full">
+    <!-- HEADER (TIDAK STICKY) -->
+    <div class="bg-blue-700 text-white shadow-md">
       <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
-        <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-            <svg class="w-5 h-5 text-blue-100">
-              <use href="#ic-cubes"></use>
-            </svg>
-          </div>
+        <div class="flex items-center gap-2.5">
+          <svg class="w-5 h-5 text-blue-200">
+            <use href="#ic-cubes"></use>
+          </svg>
+
           <div class="leading-tight">
-            <h1 class="font-bold text-base tracking-wide text-white">Logistik SMG</h1>
+            <h1 class="font-bold text-base tracking-wide">Logistik SMG</h1>
             <p class="text-[10px] text-blue-200 font-mono opacity-90">
-              v3.8 | Online Mode
+              v3.7 / mode:material-only
             </p>
           </div>
         </div>
 
         <button
           id="btn-menu"
-          class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white/10 active:scale-95 transition focus:outline-none"
-          type="button"
-          aria-label="Menu"
+          class="w-9 h-9 flex items-center justify-center rounded-full
+                 hover:bg-blue-600 transition active:scale-95"
         >
-          <svg class="w-7 h-7 text-white">
+          <svg class="w-6 h-6 text-white">
             <use href="#ic-bars"></use>
           </svg>
         </button>
       </div>
     </div>
 
-    <div id="main-menu" class="hidden fixed inset-0 z-[100]">
-      <div 
-        id="main-menu-backdrop" 
-        class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-      ></div>
-
-      <div 
-        id="main-menu-card" 
-        class="absolute top-16 right-4 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col fade-in"
+    <!-- MENU -->
+    <div
+      id="main-menu"
+      class="hidden fixed inset-0 z-[60] bg-black/50"
+    >
+      <div
+        class="absolute top-14 right-2 w-52 bg-white rounded-xl shadow-2xl
+               py-2 flex flex-col overflow-hidden text-sm font-medium fade-in"
       >
-        <div class="px-4 py-3 bg-slate-50 border-b border-slate-100">
-          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Navigasi</span>
-        </div>
-
-        <button id="nav-form" class="w-full text-left px-4 py-3.5 hover:bg-blue-50 active:bg-blue-100 text-slate-700 flex items-center gap-3 border-b border-slate-50 transition-colors">
-          <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-             <svg class="w-4 h-4"><use href="#ic-camera"></use></svg>
-          </div>
-          <span class="font-medium text-sm">Input Foto</span>
+        <button
+          id="nav-form"
+          class="px-4 py-3 text-left hover:bg-blue-50 text-slate-700
+                 flex items-center gap-3 border-b border-gray-100"
+        >
+          <svg class="w-5 h-5 text-blue-600"><use href="#ic-camera"></use></svg>
+          <span>Tambah Gambar</span>
         </button>
 
-        <button id="nav-data" class="w-full text-left px-4 py-3.5 hover:bg-blue-50 active:bg-blue-100 text-slate-700 flex items-center gap-3 border-b border-slate-50 transition-colors">
-          <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
-             <svg class="w-4 h-4"><use href="#ic-history"></use></svg>
-          </div>
-          <span class="font-medium text-sm">Riwayat Data</span>
+        <button
+          id="nav-data"
+          class="px-4 py-3 text-left hover:bg-blue-50 text-slate-700
+                 flex items-center gap-3 border-b border-gray-100"
+        >
+          <svg class="w-5 h-5 text-blue-600"><use href="#ic-history"></use></svg>
+          <span>Riwayat</span>
         </button>
 
-        <button id="nav-search" class="w-full text-left px-4 py-3.5 hover:bg-blue-50 active:bg-blue-100 text-slate-700 flex items-center gap-3 transition-colors">
-          <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
-             <svg class="w-4 h-4"><use href="#ic-search"></use></svg>
-          </div>
-          <span class="font-medium text-sm">Cari PO</span>
+        <button
+          id="nav-search"
+          class="px-4 py-3 text-left hover:bg-blue-50 text-slate-700
+                 flex items-center gap-3"
+        >
+          <svg class="w-5 h-5 text-blue-600"><use href="#ic-search"></use></svg>
+          <span>Cari Foto</span>
         </button>
       </div>
     </div>
@@ -632,7 +631,7 @@
         type="button"
       >
         <svg class="w-5 h-5"><use href="#ic-upload"></use></svg>
-        <span>UPLOAD ALL</span>
+        <span>UPLOAD PO</span>
       </button>
     </div>
   </div>
@@ -849,8 +848,8 @@
   </div>
 
   <!-- Netlify-injected config + App logic -->
-  <script src="./config.js"></script>
-  <script src="./app.js"></script>
+  <script src="/config.js"></script>
+  <script src="/app.js"></script>
 
   <!-- SW register (kecil saja) -->
   <script>
@@ -860,9 +859,3 @@
   </script>
 </body>
 </html>
-
-
-
-
-
-

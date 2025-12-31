@@ -168,7 +168,7 @@
 
   <div id="app-root">
     <!-- HEADER (TIDAK STICKY) -->
-    <div class="bg-blue-700 text-white shadow-md sticky top-0 z-[60]">
+    <div class="bg-blue-700 text-white shadow-md sticky top-0 z-50">
       <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
         <div class="flex items-center gap-2.5">
           <svg class="w-5 h-5 text-blue-200">
@@ -196,19 +196,9 @@
     </div>
 
     <!-- MENU -->
-    <div
-      id="main-menu"
-      class="hidden fixed inset-0 z-[60] bg-black/50"
-    >
-      <div
-        class="absolute top-14 right-2 w-52 bg-white rounded-xl shadow-2xl
-               py-2 flex flex-col overflow-hidden text-sm font-medium fade-in"
-      >
-        <button
-          id="nav-form"
-          class="px-4 py-3 text-left hover:bg-blue-50 text-slate-700
-                 flex items-center gap-3 border-b border-gray-100"
-        >
+    <div id="main-menu" class="hidden fixed inset-0 z-[90] bg-black/50">
+      <div class="absolute top-14 right-2 w-52 bg-white rounded-xl shadow-2xl py-2 flex flex-col overflow-hidden text-sm font-medium fade-in">
+        <button id="nav-form" class="px-4 py-3 text-left hover:bg-blue-50 text-slate-700 flex items-center gap-3 border-b border-gray-100">
           <svg class="w-5 h-5 text-blue-600"><use href="#ic-camera"></use></svg>
           <span>Tambah Gambar</span>
         </button>
@@ -859,4 +849,5 @@
   </script>
 </body>
 </html>
+
 

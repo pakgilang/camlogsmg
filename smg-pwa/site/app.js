@@ -2247,13 +2247,24 @@
   }
 
   function bindUi() {
-    // menu
-   on($("btn-menu"), "click", function (e) {
-     try { e.preventDefault(); } catch (x) {}
-     try { e.stopPropagation(); } catch (x2) {}
-     toggleMenu();
-   });
-    on($("main-menu-backdrop"), "click", function () { closeMenu(); });
+   // menu button (hindari click "tembus" ke backdrop)
+on($("btn-menu"), "click", function (e) {
+  try { e.preventDefault(); } catch (x) {}
+  try { e.stopPropagation(); } catch (x2) {}
+  toggleMenu();
+});
+
+// close hanya kalau klik backdrop
+on($("main-menu-backdrop"), "click", function (e) {
+  try { e.stopPropagation(); } catch (_) {}
+  closeMenu();
+});
+
+// klik di kartu menu jangan menutup
+on($("main-menu-card"), "click", function (e) {
+  try { e.stopPropagation(); } catch (_) {}
+});
+
     on($("nav-form"), "click", function (e) { e.stopPropagation(); navigate("form"); });
     on($("nav-data"), "click", function (e) { e.stopPropagation(); navigate("data"); });
     on($("nav-search"), "click", function (e) { e.stopPropagation(); navigate("search"); });
@@ -2351,6 +2362,7 @@
   });
 
 })();
+
 
 
 

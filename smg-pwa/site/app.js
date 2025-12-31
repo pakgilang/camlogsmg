@@ -1,3 +1,5 @@
+app.js saya seperti ini
+
 /* app.js — CAMLOG/SMG PWA (Netlify static) + GAS API
    - Mengandalkan /config.js (dibuat saat build Netlify oleh build-config.js)
    - Single file, tanpa framework, ringan
@@ -112,13 +114,12 @@
   var OV = { open: false, resolver: null, mode: "alert", allowClose: true };
 
   function escapeHtml(s) {
-    // FIX: Menggunakan entity HTML yang benar untuk replace quote
     return String(s || "")
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+      .replace(/'/g, "&#39;");
   }
 
   function escapeAttr(s) {
@@ -2056,126 +2057,58 @@
     var qEl = $("search-input");
     var res = $("search-results");
     if (!qEl || !res) return;
-   var qRaw = (qEl.value || "").trim();
-   if (!qRaw) return;
-   
-   // normalisasi seperti halaman utama
-   var q = normalizePOWithMode(currentPOMode, qRaw); // :contentReference[oaicite:3]{index=3}
-   qEl.value = q; // biar user lihat hasil normalisasi
-
+    var q = (qEl.value || "").trim();
+    if (!q) return;
 
     res.innerHTML = '<div class="text-center text-xs text-slate-400 mt-4">Mencari...</div>';
 
-   apiGet("searchAllByPO", { q: q }, function (err, resp) {
-     res.innerHTML = "";
-     if (err) {
-       res.innerHTML = '<div class="text-center text-xs text-red-400 mt-4">Gagal.</div>';
-       return;
-     }
-   
-     var payload = (resp && resp.ok && resp.data) ? resp.data : null;
-     if (!payload) {
-       res.innerHTML = '<div class="text-center text-xs text-red-400 mt-4">Format data tidak valid.</div>';
-       return;
-     }
-   
-     // --- 1) Card GIT_SRM ---
-     var git = payload.git_srm;
-     var gitCard = document.createElement("div");
-     gitCard.className = "bg-white p-3 rounded-xl border border-slate-200 shadow-sm";
-   
-     if (!git) {
-       gitCard.innerHTML =
-         '<div class="text-xs font-bold text-slate-700">GIT_SRM</div>' +
-         '<div class="text-[11px] text-slate-400 mt-1">Tidak ditemukan data GIT_SRM untuk PO ini.</div>';
-     } else {
-       // tampilkan field penting dulu (sesuaikan mau apa saja)
-       var rows = [
-         ["PO_NUMBER", git.PO_NUMBER],
-         ["GIT_NUMBER", git.GIT_NUMBER],
-         ["VENDOR_NAME", git.VENDOR_NAME],
-         ["COMPANY_NAME", git.COMPANY_NAME],
-         ["PIC_PO", git.PIC_PO],
-         ["TGL_MASUK", git.TGL_MASUK],
-         ["TGL_KELUAR", git.TGL_KELUAR],
-         ["KETERANGAN", git.KETERANGAN]
-       ];
-   
-       var html =
-         '<div class="flex items-center justify-between">' +
-         '  <div class="text-xs font-extrabold text-slate-800">GIT_SRM</div>' +
-         '  <div class="text-[10px] text-slate-400 font-mono">PO: ' + escapeHtml(payload.po) + '</div>' +
-         '</div>' +
-         '<div class="mt-2 grid grid-cols-1 gap-1 text-[11px]">';
-   
-       for (var i = 0; i < rows.length; i++) {
-         html +=
-           '<div class="flex gap-2">' +
-           '  <div class="w-28 text-slate-400 font-mono">' + escapeHtml(rows[i][0]) + '</div>' +
-           '  <div class="flex-1 text-slate-700 break-words">' + escapeHtml(rows[i][1] || "") + '</div>' +
-           '</div>';
-       }
-       html += "</div>";
-   
-       gitCard.innerHTML = html;
-     }
-   
-     res.appendChild(gitCard);
-   
-     // --- 2) FOTO grid ---
-     var fotos = payload.foto || [];
-     var fotoCard = document.createElement("div");
-     fotoCard.className = "bg-white p-3 rounded-xl border border-slate-200 shadow-sm mt-3";
-   
-     if (!fotos.length) {
-       fotoCard.innerHTML =
-         '<div class="text-xs font-bold text-slate-700">FOTO</div>' +
-         '<div class="text-[11px] text-slate-400 mt-1">Tidak ada foto untuk PO ini.</div>';
-       res.appendChild(fotoCard);
-       return;
-     }
-   
-     var grid = document.createElement("div");
-     grid.className = "mt-2 grid grid-cols-4 gap-2";
-   
-     fotoCard.innerHTML =
-       '<div class="text-xs font-extrabold text-slate-800">FOTO</div>' +
-       '<div class="text-[11px] text-slate-400 mt-1">' + fotos.length + " item</div>";
-   
-     for (var k = 0; k < fotos.length; k++) {
-       (function (row) {
-         // dari sheet FOTO: ID_FOTO dan KATEGORI
-         var idFoto = row.ID_FOTO;
-         var kat = row.KATEGORI || "";
-   
-         var wrap = document.createElement("button");
-         wrap.type = "button";
-         wrap.className =
-           "relative aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-100 active:scale-95 transition";
-   
-         var img = document.createElement("img");
-         img.src = "https://lh3.googleusercontent.com/d/" + idFoto + "=s200";
-         img.className = "w-full h-full object-cover";
-         wrap.appendChild(img);
-   
-         var badge = document.createElement("div");
-         badge.className =
-           "absolute bottom-1 left-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-black/60 text-white";
-         badge.innerText = kat;
-         wrap.appendChild(badge);
-   
-         wrap.onclick = function () {
-           lbShow(["https://lh3.googleusercontent.com/d/" + idFoto + "=s0"], 0);
-         };
-   
-         grid.appendChild(wrap);
-       })(fotos[k]);
-     }
-   
-     fotoCard.appendChild(grid);
-     res.appendChild(fotoCard);
-   });
+    apiGet("searchByPO", { noPo: q }, function (err, data) {
+      res.innerHTML = "";
+      if (err) {
+        res.innerHTML = '<div class="text-center text-xs text-red-400 mt-4">Gagal.</div>';
+        return;
+      }
 
+      var rows = (data && data.data && data.ok) ? data.data : data;
+      if (!rows || !rows.length) {
+        res.innerHTML = '<div class="text-center text-xs text-red-400 mt-4">Nihil.</div>';
+        return;
+      }
+
+      for (var i = 0; i < rows.length; i++) {
+        var row = rows[i];
+        var thumb = "https://lh3.googleusercontent.com/d/" + row[1] + "=s100";
+
+        var card = document.createElement("div");
+        card.className = "bg-white p-2 rounded-lg border border-slate-200 shadow-sm flex gap-3 items-center";
+
+        var img = document.createElement("img");
+        img.src = thumb;
+        img.className = "w-10 h-10 rounded object-cover cursor-pointer";
+        img.onclick = (function (id) {
+          return function () { viewImage(id); };
+        })(row[1]);
+
+        var txt = document.createElement("div");
+        txt.className = "flex-1";
+
+        var a = document.createElement("div");
+        a.className = "text-xs font-bold text-slate-700";
+        a.innerText = "PO: " + (row[3] || "");
+
+        var b = document.createElement("div");
+        b.className = "text-[10px] text-slate-400";
+        b.innerText = safeDate(row[7]);
+
+        txt.appendChild(a);
+        txt.appendChild(b);
+
+        card.appendChild(img);
+        card.appendChild(txt);
+        res.appendChild(card);
+      }
+    });
+  }
 
   function viewImage(id) {
     lbShow(["https://lh3.googleusercontent.com/d/" + id + "=s0"], 0);
@@ -2247,39 +2180,13 @@
     } catch (e) {}
   }
 
-function bindUi() {
-    // 1. Logic Tombol Menu
-    var btnMenu = $("btn-menu");
-    if (btnMenu) {
-      btnMenu.onclick = function(e) {
-        // Stop bubbling agar tidak langsung menutup menu jika ada logic lain
-        e.preventDefault();
-        e.stopPropagation();
-        toggleMenu();
-      };
-    }
-
-    // 2. Logic Backdrop (Tutup jika klik area gelap)
-    var backdrop = $("main-menu-backdrop");
-    if (backdrop) {
-      backdrop.onclick = function(e) {
-        e.stopPropagation();
-        closeMenu();
-      };
-    }
-
-    // 3. Logic Card (Jangan tutup jika klik di dalam kotak putih menu)
-    var card = $("main-menu-card");
-    if (card) {
-      card.onclick = function(e) {
-        e.stopPropagation();
-      };
-    }
-
-    // Navigasi Item
-    on($("nav-form"), "click", function (e) { navigate("form"); });
-    on($("nav-data"), "click", function (e) { navigate("data"); });
-    on($("nav-search"), "click", function (e) { navigate("search"); });
+  function bindUi() {
+    // menu
+    on($("btn-menu"), "click", function (e) { try { e.preventDefault(); } catch (x) {} toggleMenu(); });
+    on($("main-menu"), "click", function () { closeMenu(); });
+    on($("nav-form"), "click", function (e) { e.stopPropagation(); navigate("form"); });
+    on($("nav-data"), "click", function (e) { e.stopPropagation(); navigate("data"); });
+    on($("nav-search"), "click", function (e) { e.stopPropagation(); navigate("search"); });
 
     // overlay buttons
     on($("ovX"), "click", function () { ovClose(false); });
@@ -2374,4 +2281,3 @@ function bindUi() {
   });
 
 })();
-

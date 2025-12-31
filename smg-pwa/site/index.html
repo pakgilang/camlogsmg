@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <base href="/" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>Logistik SMG</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#1d4ed8" />
+
+  <!-- iOS PWA niceties (opsional, ringan) -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="/icons/icon128.png" />
+
+  <!-- Tailwind CDN (tetap) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Font (opsional, tetap) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet"
+  >
+
+  <style>
+    :root { --safe-top: env(safe-area-inset-top, 0px); }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f1f5f9;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .fade-in { animation: fadeIn .25s ease-in-out; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    input, select, textarea { font-size: 14px !important; }
+    .btn-disabled { opacity: .45; pointer-events: none; }
+    .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom, 0px)); }
+
+    /* modal/overlay base */
+    .ov-hidden { display: none; }
+  </style>
+</head>
+
+<body class="text-slate-800 pb-32 min-h-screen">
+  <!-- SVG SPRITE -->
+  <svg aria-hidden="true" class="hidden">
+    <symbol id="ic-cubes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 2l9 5-9 5-9-5 9-5z"/>
+      <path d="M3 7v10l9 5 9-5V7"/>
+      <path d="M12 12v10"/>
+    </symbol>
+
+    <symbol id="ic-bars" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M4 6h16M4 12h16M4 18h16"/>
+    </symbol>
+
+    <symbol id="ic-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M4 7h4l2-2h4l2 2h4v12H4V7z"/>
+      <path d="M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>
+    </symbol>
+
+    <symbol id="ic-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/>
+      <path d="M21 21l-4.35-4.35"/>
+    </symbol>
+
+    <symbol id="ic-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M3 12a9 9 0 1 0 3-6.7"/>
+      <path d="M3 3v6h6"/>
+      <path d="M12 7v6l4 2"/>
+    </symbol>
+
+    <symbol id="ic-boxes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73L13 2.27a2 2 0 0 0-2 0L4 6.27A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+      <path d="M3.3 7L12 12l8.7-5"/>
+      <path d="M12 22V12"/>
+    </symbol>
+
+    <symbol id="ic-plus-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 8v8M8 12h8"/>
+      <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
+    </symbol>
+
+    <symbol id="ic-hash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M4 9h16M4 15h16"/>
+      <path d="M10 3L8 21M16 3l-2 18"/>
+    </symbol>
+
+    <symbol id="ic-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14z"/>
+      <path d="M8.5 10.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/>
+      <path d="M21 15l-5-5L5 21"/>
+    </symbol>
+
+    <symbol id="ic-save" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+      <path d="M17 21v-8H7v8"/>
+      <path d="M7 3v5h8"/>
+    </symbol>
+
+    <symbol id="ic-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 5v14M5 12h14"/>
+    </symbol>
+
+    <symbol id="ic-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <path d="M7 10l5-5 5 5"/>
+      <path d="M12 5v14"/>
+    </symbol>
+
+    <symbol id="ic-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M3 6h18"/>
+      <path d="M8 6V4h8v2"/>
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+      <path d="M10 11v6M14 11v6"/>
+    </symbol>
+
+    <symbol id="ic-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/>
+      <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+    </symbol>
+
+    <symbol id="ic-pen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 20h9"/>
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+    </symbol>
+
+    <symbol id="ic-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M18 6L6 18M6 6l12 12"/>
+    </symbol>
+
+    <symbol id="ic-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M20 6L9 17l-5-5"/>
+    </symbol>
+
+    <symbol id="ic-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M10.3 3.2l-8.4 14.5A2 2 0 0 0 3.6 21h16.8a2 2 0 0 0 1.7-3.3L13.7 3.2a2 2 0 0 0-3.4 0z"/>
+      <path d="M12 9v4"/>
+      <path d="M12 17h.01"/>
+    </symbol>
+
+    <symbol id="ic-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/>
+      <path d="M12 10v6"/>
+      <path d="M12 8h.01"/>
+    </symbol>
+
+    <symbol id="ic-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 12a9 9 0 1 1-9-9"/>
+    </symbol>
+
+    <symbol id="ic-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M15 18l-6-6 6-6"/>
+    </symbol>
+
+    <symbol id="ic-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M9 18l6-6-6-6"/>
+    </symbol>
+  </svg>
+
+  <div id="app-root">
+    <!-- HEADER (TIDAK STICKY) -->
+    <div class="bg-blue-700 text-white shadow-md">
+      <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
+        <div class="flex items-center gap-2.5">
+          <svg class="w-5 h-5 text-blue-200">
+            <use href="#ic-cubes"></use>
+          </svg>
+
+          <div class="leading-tight">
+            <h1 class="font-bold text-base tracking-wide">Logistik SMG</h1>
+            <p class="text-[10px] text-blue-200 font-mono opacity-90">
+              v3.7 / mode:material-only
+            </p>
+          </div>
+        </div>
+
+        <button
+          id="btn-menu"
+          class="w-9 h-9 flex items-center justify-center rounded-full
+                 hover:bg-blue-600 transition active:scale-95"
+        >
+          <svg class="w-6 h-6 text-white">
+            <use href="#ic-bars"></use>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- MENU -->
+    <div
+      id="main-menu"
+      class="hidden fixed inset-0 z-[60] bg-black/50"
+    >
+      <div
+        class="absolute top-14 right-2 w-52 bg-white rounded-xl shadow-2xl
+               py-2 flex flex-col overflow-hidden text-sm font-medium fade-in"
+      >
+        <button
+          id="nav-form"
+          class="px-4 py-3 text-left hover:bg-blue-50 text-slate-700
+                 flex items-center gap-3 border-b border-gray-100"
+        >
+          <svg class="w-5 h-5 text-blue-600"><use href="#ic-camera"></use></svg>
+          <span>Tambah Gambar</span>
+        </button>
+
+        <button
+          id="nav-data"
+          class="px-4 py-3 text-left hover:bg-blue-50 text-slate-700
+                 flex items-center gap-3 border-b border-gray-100"
+        >
+          <svg class="w-5 h-5 text-blue-600"><use href="#ic-history"></use></svg>
+          <span>Riwayat</span>
+        </button>
+
+        <button
+          id="nav-search"
+          class="px-4 py-3 text-left hover:bg-blue-50 text-slate-700
+                 flex items-center gap-3"
+        >
+          <svg class="w-5 h-5 text-blue-600"><use href="#ic-search"></use></svg>
+          <span>Cari Foto</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="max-w-md mx-auto mt-2 px-3">
+
+      <!-- VIEW: FORM -->
+      <div id="view-form" class="fade-in">
+
+        <!-- DRAFT CARD -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
+
+          <!-- PO ROW (TIDAK STICKY LAGI) -->
+          <div id="po-row" class="flex gap-2">
+            <div class="flex-1 relative">
+              <label
+                id="lbl-po"
+                class="block text-[10px] font-bold text-slate-500 uppercase
+                       tracking-wider mb-1"
+              >
+                PO Number
+              </label>
+
+              <input
+                type="text"
+                id="inp-po"
+                class="w-full pl-3 pr-10 py-2.5 bg-slate-50 border border-slate-200
+                       rounded-lg text-sm font-mono focus:outline-none
+                       focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                placeholder="Scan/Ketik..."
+                inputmode="numeric"
+                autocomplete="off"
+              >
+
+              <button
+                id="btn-plus-meta"
+                type="button"
+                class="absolute right-1 top-6 w-8 h-8 flex items-center justify-center
+                       text-blue-500 hover:text-blue-700 active:scale-90 transition"
+              >
+                <svg class="w-6 h-6">
+                  <use href="#ic-plus-circle"></use>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- MODE NORMALISASI -->
+          <div id="po-mode-panel">
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Mode Normalisasi
+              </span>
+              <span id="mode-hint" class="text-[10px] text-slate-400">
+                ENTER / blur / simpan
+              </span>
+            </div>
+
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-1 flex gap-1">
+              <button
+                id="mode-std"
+                class="flex-1 py-2 rounded-lg text-[11px] font-bold
+                       flex items-center justify-center gap-2"
+                type="button"
+              >
+                <span>CPJF</span>
+              </button>
+
+              <button
+                id="mode-SL3"
+                class="flex-1 py-2 rounded-lg text-[11px] font-bold
+                       flex items-center justify-center gap-2"
+                type="button"
+              >
+                <span>SL3</span>
+              </button>
+
+              <button
+                id="mode-SRG"
+                class="flex-1 py-2 rounded-lg text-[11px] font-bold
+                       flex items-center justify-center gap-2"
+                type="button"
+              >
+                <span>SRG</span>
+              </button>
+
+              <button
+                id="mode-PML"
+                class="flex-1 py-2 rounded-lg text-[11px] font-bold
+                       flex items-center justify-center gap-2"
+                type="button"
+              >
+                <span>PML</span>
+              </button>
+
+              <button
+                id="mode-BYS"
+                class="flex-1 py-2 rounded-lg text-[11px] font-bold
+                       flex items-center justify-center gap-2"
+                type="button"
+              >
+                <span>BYS/KBM</span>
+              </button>
+            </div>
+
+            <div class="mt-1 text-[10px] text-slate-400">
+              * Mode tersimpan per-PO (jadi bisa campur lokasi dalam 1 batch).
+            </div>
+          </div>
+
+          <!-- OPTIONAL/META (GIT NUMBER + PIC + Keterangan) -->
+          <div
+            id="optional-fields"
+            class="hidden mt-2 grid grid-cols-2 gap-2 pt-2 border-t border-slate-100"
+          >
+            <!-- GIT NUMBER -->
+            <div>
+              <label
+                class="block text-[9px] font-bold text-slate-400 mb-1"
+                id="lbl-git"
+              >
+                GIT NUMBER (Opsional)
+              </label>
+
+              <input
+                type="text"
+                id="inp-git"
+                placeholder="GTxxxxxxxxxxxx..."
+                class="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-lg
+                       text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500
+                       focus:bg-white"
+                autocomplete="off"
+              >
+            </div>
+
+            <!-- PIC -->
+            <div>
+              <label
+                class="block text-[9px] font-bold text-slate-400 mb-1"
+                id="lbl-pic"
+              >
+                PIC PO (Opsional)
+              </label>
+
+              <select
+                id="inp-pic"
+                class="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-lg
+                       text-xs focus:outline-none focus:ring-2 focus:ring-blue-500
+                       focus:bg-white"
+              >
+                <option value="">Pilih PIC...</option>
+                <option value="ANTONIUS.TK">ANTONIUS.TK</option>
+                <option value="ARIF.ATMAJA">ARIF.ATMAJA</option>
+                <option value="BERNIKE.AS">BERNIKE.AS</option>
+                <option value="CAECILIA.MI">CAECILIA.MI</option>
+                <option value="DODY">DODY</option>
+                <option value="GILANG">GILANG</option>
+                <option value="IMAN.WS">IMAN.WS</option>
+                <option value="JOANNA.NYDIA">JOANNA.NYDIA</option>
+                <option value="RATNA.AV">RATNA.AV</option>
+                <option value="RIMBA.G">RIMBA.G</option>
+                <option value="SANJUMA.T">SANJUMA.T</option>
+              </select>
+            </div>
+
+            <!-- Keterangan -->
+            <div class="col-span-2">
+              <label
+                class="block text-[9px] font-bold text-slate-400 mb-1"
+                id="lbl-ket"
+              >
+                Keterangan (Opsional)
+              </label>
+
+              <input
+                type="text"
+                id="inp-ket"
+                placeholder="..."
+                class="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-lg
+                       text-xs focus:outline-none focus:ring-2 focus:ring-blue-500
+                       focus:bg-white"
+              >
+            </div>
+          </div>
+
+          <!-- CAMERA INPUT -->
+          <input
+            type="file"
+            id="camera-input"
+            accept="image/*"
+            capture="environment"
+            class="hidden"
+          >
+
+          <!-- FOTO AREA -->
+          <div>
+            <div class="flex justify-between items-end mb-1.5">
+              <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                Foto (Max 10)
+              </span>
+
+              <div class="flex items-center gap-2">
+                <span
+                  id="photo-total-kb"
+                  class="text-[10px] font-bold text-slate-500 bg-slate-100
+                         px-2 py-0.5 rounded-full hidden"
+                >0 KB</span>
+
+                <span
+                  id="photo-count"
+                  class="text-[10px] font-bold text-blue-600 bg-blue-50
+                         px-2 py-0.5 rounded-full hidden"
+                >0</span>
+              </div>
+            </div>
+
+            <div class="flex gap-2 items-start">
+              <div class="flex-1 overflow-x-auto scrollbar-hide">
+                <div id="preview-strip" class="flex gap-2">
+                  <div
+                    id="preview-skeleton"
+                    class="w-24 h-24 rounded-xl border-2 border-dashed border-slate-300
+                           bg-slate-50 flex flex-col items-center justify-center
+                           text-slate-300"
+                  >
+                    <svg class="w-5 h-5"><use href="#ic-image"></use></svg>
+                    <span class="text-[10px] mt-1">Belum ada</span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                id="btn-camera"
+                class="w-24 h-24 rounded-xl bg-blue-600 text-white shadow
+                       flex flex-col items-center justify-center active:scale-95
+                       transition hover:bg-blue-700"
+                type="button"
+              >
+                <svg class="w-6 h-6"><use href="#ic-camera"></use></svg>
+                <span class="text-[10px] font-bold mt-1">CAMERA</span>
+              </button>
+            </div>
+
+            <div
+              id="processing-toast"
+              class="hidden mt-2 text-center text-[10px]
+                     text-green-600 font-semibold animate-pulse"
+            >
+              <span class="inline-flex items-center gap-1">
+                <svg class="w-3.5 h-3.5 animate-spin">
+                  <use href="#ic-spin"></use>
+                </svg>
+                <span>Mengompres...</span>
+              </span>
+            </div>
+          </div>
+
+          <!-- BUTTONS -->
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button
+              id="btn-save"
+              class="btn-disabled bg-emerald-500 hover:bg-emerald-600 text-white
+                     font-bold text-sm py-3 rounded-xl shadow flex items-center
+                     justify-center gap-2 active:scale-95 transition"
+              type="button"
+            >
+              <svg class="w-5 h-5"><use href="#ic-save"></use></svg>
+              <span>SIMPAN</span>
+            </button>
+
+            <button
+              id="btn-addpo"
+              class="btn-disabled bg-white hover:bg-slate-50 text-slate-700
+                     font-bold text-sm py-3 rounded-xl shadow-sm border
+                     border-slate-200 flex items-center justify-center gap-2
+                     active:scale-95 transition"
+              type="button"
+            >
+              <svg class="w-5 h-5"><use href="#ic-plus"></use></svg>
+              <span>ADD PO</span>
+            </button>
+          </div>
+
+          <div class="text-[10px] text-slate-400">
+            * SIMPAN = masukkan PO ke daftar. ADD PO = simpan & lanjut PO baru.
+          </div>
+
+          <div
+            id="draft-saved"
+            class="hidden text-[10px] text-emerald-600 font-semibold
+                   flex items-center gap-1"
+          >
+            <svg class="w-4 h-4"><use href="#ic-check"></use></svg>
+            <span>Draft tersimpan ✓</span>
+          </div>
+        </div>
+
+        <!-- LIST PO -->
+        <div class="mt-3 mb-28">
+          <div class="flex justify-between items-center px-1 mb-1.5">
+            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              Daftar PO
+            </span>
+
+            <button
+              id="btn-reset-all"
+              class="text-[10px] font-bold text-red-600 bg-red-50
+                     border border-red-100 px-2 py-1 rounded-lg active:scale-95"
+              type="button"
+            >
+              <span class="inline-flex items-center gap-1">
+                <svg class="w-4 h-4"><use href="#ic-trash"></use></svg>
+                <span>Reset</span>
+              </span>
+            </button>
+          </div>
+
+          <div id="po-list" class="space-y-2"></div>
+
+          <div
+            id="po-empty"
+            class="mt-2 bg-white border border-slate-200 rounded-xl
+                   p-4 text-center text-xs text-slate-400"
+          >
+            Belum ada PO disimpan. Isi → foto → klik <b>SIMPAN</b> / <b>ADD PO</b>.
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW: DATA -->
+      <div id="view-data" class="hidden fade-in">
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden mb-20">
+          <div
+            class="bg-slate-50 px-3 py-2 border-b border-slate-100
+                   flex justify-between items-center"
+          >
+            <span class="text-xs font-bold text-slate-600">Riwayat Terkini</span>
+
+            <button
+              id="btn-refresh"
+              class="text-[10px] bg-white border border-slate-200
+                     px-2 py-1 rounded shadow-sm text-blue-600 active:scale-95"
+              type="button"
+            >
+              <span class="inline-flex items-center gap-1">
+                <svg class="w-3.5 h-3.5"><use href="#ic-spin"></use></svg>
+                <span>Refresh</span>
+              </span>
+            </button>
+          </div>
+
+          <div id="history-list" class="divide-y divide-slate-100"></div>
+        </div>
+      </div>
+
+      <!-- VIEW: SEARCH -->
+      <div id="view-search" class="hidden fade-in">
+        <div class="bg-white p-3 rounded-lg shadow-sm border border-slate-200 flex gap-2">
+          <input
+            type="text"
+            id="search-input"
+            class="flex-1 bg-slate-50 border border-slate-200 rounded-lg
+                   px-3 py-2 text-sm focus:outline-none focus:ring-1
+                   focus:ring-blue-500"
+            placeholder="Cari No. PO..."
+            inputmode="text"
+          >
+
+          <button
+            id="btn-search"
+            class="bg-blue-600 text-white px-4 rounded-lg
+                   text-sm font-bold shadow-sm active:scale-95"
+            type="button"
+          >
+            <svg class="w-5 h-5"><use href="#ic-search"></use></svg>
+          </button>
+        </div>
+
+        <div id="search-results" class="mt-3 space-y-2 pb-20"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 safe-bottom">
+    <div class="max-w-md mx-auto px-3 py-3 flex items-center gap-2">
+      <div class="flex-1">
+        <div class="text-[11px] font-bold text-slate-700">Siap Upload</div>
+        <div class="text-[10px] text-slate-400">
+          <span id="stat-po">0 PO</span> • <span id="stat-foto">0 foto</span>
+        </div>
+      </div>
+
+      <button
+        id="btn-upload"
+        class="btn-disabled w-40 bg-indigo-600 hover:bg-indigo-700 text-white
+               font-bold text-sm py-3 rounded-xl shadow flex items-center
+               justify-center gap-2 active:scale-95 transition"
+        type="button"
+      >
+        <svg class="w-5 h-5"><use href="#ic-upload"></use></svg>
+        <span>UPLOAD PO</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- TYPE PICKER MODAL (popup pilihan jenis sebelum kamera) -->
+  <div id="type-modal" class="hidden fixed inset-0 z-[85] bg-black/50">
+    <div class="absolute inset-0" id="type-modal-backdrop"></div>
+
+    <div class="relative h-full w-full flex items-center justify-center p-3">
+      <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden fade-in">
+        <div class="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
+            <svg class="w-5 h-5 text-blue-700"><use href="#ic-camera"></use></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-extrabold text-slate-800 truncate">Pilih Jenis Foto</div>
+            <div class="text-[11px] text-slate-400 truncate">Setelah pilih, kamera akan terbuka</div>
+          </div>
+          <button
+            id="btn-type-close"
+            class="w-9 h-9 rounded-xl hover:bg-slate-50 active:scale-95 flex items-center justify-center"
+            type="button"
+          >
+            <svg class="w-5 h-5 text-slate-500"><use href="#ic-x"></use></svg>
+          </button>
+        </div>
+
+        <div class="px-4 py-4">
+          <div class="grid grid-cols-3 gap-2">
+            <!-- URUTAN: SJ, KOLI, MATERIAL -->
+            <button
+              id="btn-type-sj"
+              class="w-full aspect-square rounded-xl bg-amber-500 hover:bg-amber-600
+                     text-white font-extrabold text-sm shadow
+                     flex items-center justify-center
+                     active:scale-95 transition"
+              type="button"
+            >SJ</button>
+
+            <button
+              id="btn-type-koli"
+              class="w-full aspect-square rounded-xl bg-emerald-600 hover:bg-emerald-700
+                     text-white font-extrabold text-sm shadow
+                     flex items-center justify-center
+                     active:scale-95 transition"
+              type="button"
+            >KOLI</button>
+
+            <button
+              id="btn-type-material"
+              class="w-full aspect-square rounded-xl bg-blue-600 hover:bg-blue-700
+                     text-white font-extrabold text-sm shadow
+                     flex items-center justify-center
+                     active:scale-95 transition"
+              type="button"
+            >MATERIAL</button>
+          </div>
+
+          <div class="mt-3 text-[11px] text-slate-400">
+            * Jenis akan tampil sebagai badge di sudut atas foto.
+          </div>
+        </div>
+
+        <div class="px-4 py-3 border-t border-slate-100 flex justify-end">
+          <button
+            id="btn-type-cancel"
+            class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-bold active:scale-95"
+            type="button"
+          >
+            Batal
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIGHTBOX (Tailwind only) -->
+  <div id="lb" class="hidden fixed inset-0 z-[80] bg-black/80 backdrop-blur-sm">
+    <div class="absolute inset-0" id="lb-backdrop"></div>
+
+    <div class="relative h-full w-full flex items-center justify-center p-3">
+      <button
+        id="lb-close"
+        class="absolute top-3 right-3 z-[90] w-11 h-11 rounded-full
+               bg-white/10 hover:bg-white/20 text-white flex items-center
+               justify-center active:scale-95"
+        type="button"
+      >
+        <svg class="w-6 h-6"><use href="#ic-x"></use></svg>
+      </button>
+
+      <button
+        id="lb-prev"
+        class="absolute left-2 z-[90] w-11 h-11 rounded-full
+               bg-white/10 hover:bg-white/20 text-white flex items-center
+               justify-center active:scale-95"
+        type="button"
+      >
+        <svg class="w-6 h-6"><use href="#ic-left"></use></svg>
+      </button>
+
+      <button
+        id="lb-next"
+        class="absolute right-2 z-[90] w-11 h-11 rounded-full
+               bg-white/10 hover:bg-white/20 text-white flex items-center
+               justify-center active:scale-95"
+        type="button"
+      >
+        <svg class="w-6 h-6"><use href="#ic-right"></use></svg>
+      </button>
+
+      <img
+        id="lbImg"
+        class="max-h-[85vh] max-w-[92vw] rounded-xl shadow-2xl object-contain select-none"
+        alt="preview"
+      >
+
+      <div
+        id="lbCount"
+        class="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1
+               rounded-full bg-black/40 text-white text-xs font-semibold"
+      >
+        1 / 1
+      </div>
+    </div>
+  </div>
+
+  <!-- OVERLAY UI (modal/confirm/progress) -->
+  <div id="ov" class="ov-hidden fixed inset-0 z-[90]">
+    <div id="ovBackdrop" class="absolute inset-0 bg-black/40"></div>
+
+    <div class="relative h-full w-full flex items-center justify-center p-3">
+      <div
+        id="ovCard"
+        class="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200
+               overflow-hidden fade-in"
+      >
+        <div class="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+          <div id="ovIcon" class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center">
+            <svg class="w-5 h-5 text-slate-700"><use href="#ic-info"></use></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div id="ovTitle" class="text-sm font-extrabold text-slate-800 truncate">Title</div>
+            <div id="ovSub" class="text-[11px] text-slate-400 truncate hidden">Sub</div>
+          </div>
+          <button
+            id="ovX"
+            class="w-9 h-9 rounded-xl hover:bg-slate-50 active:scale-95
+                   flex items-center justify-center"
+            type="button"
+          >
+            <svg class="w-5 h-5 text-slate-500"><use href="#ic-x"></use></svg>
+          </button>
+        </div>
+
+        <div id="ovBody" class="px-4 py-3 text-sm text-slate-700"></div>
+
+        <div id="ovFooter" class="px-4 py-3 border-t border-slate-100 flex gap-2 justify-end">
+          <button
+            id="ovCancel"
+            class="px-3 py-2 rounded-xl border border-slate-200 bg-white
+                   text-slate-700 text-sm font-bold active:scale-95"
+            type="button"
+          >
+            Batal
+          </button>
+
+          <button
+            id="ovOk"
+            class="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700
+                   text-white text-sm font-bold active:scale-95"
+            type="button"
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div
+    id="toast"
+    class="hidden fixed top-3 left-1/2 -translate-x-1/2 z-[95]
+           max-w-md w-[92vw]"
+  >
+    <div
+      id="toastBox"
+      class="bg-white border border-slate-200 shadow-xl rounded-2xl px-3 py-2
+             flex items-center gap-2 fade-in"
+    >
+      <div
+        id="toastIcon"
+        class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center"
+      >
+        <svg class="w-5 h-5 text-slate-700"><use href="#ic-info"></use></svg>
+      </div>
+
+      <div class="flex-1 min-w-0">
+        <div id="toastText" class="text-sm font-semibold text-slate-800 truncate">
+          ...
+        </div>
+      </div>
+
+      <button
+        id="toastClose"
+        class="w-9 h-9 rounded-xl hover:bg-slate-50 active:scale-95
+               flex items-center justify-center"
+        type="button"
+      >
+        <svg class="w-5 h-5 text-slate-500"><use href="#ic-x"></use></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Netlify-injected config + App logic -->
+  <script src="/config.js"></script>
+  <script src="/app.js"></script>
+
+  <!-- SW register (kecil saja) -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(function(){});
+    }
+  </script>
+</body>
+</html>

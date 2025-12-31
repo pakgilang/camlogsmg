@@ -1929,7 +1929,7 @@
     });
   }
 
-  // =============================
+// =============================
   // HISTORY & SEARCH (GAS)
   // =============================
   function safeTime(x) {
@@ -1938,10 +1938,11 @@
       return isNaN(t.getTime()) ? String(x || "") : t.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     } catch (e) { return String(x || ""); }
   }
+  
   function safeDate(x) {
     try {
       var t = new Date(x);
-      return isNaN(t.getTime()) ? String(x || "") : t.toLocaleDateString();
+      return isNaN(t.getTime()) ? String(x || "") : t.toLocaleDateString("id-ID", { day: 'numeric', month: 'short', year: 'numeric' });
     } catch (e) { return String(x || ""); }
   }
 
@@ -1966,7 +1967,170 @@
       .catch(function (e) { cb && cb(e); });
   }
 
+  // --- RENDERING GIT DATA (Card Style) ---
+  function renderGitItem(item) {
+    // Parse Material JSON
+    var matListHtml = "";
+    try {
+      var mats = JSON.parse(item.material_json || "[]");
+      if (Array.isArray(mats) && mats.length > 0) {
+        matListHtml = '<div class="mt-2 space-y-1">';
+        for (var i = 0; i < mats.length; i++) {
+          var m = mats[i];
+          matListHtml += 
+            '<div class="text-[10px] bg-slate-50 border border-slate-100 p-1.5 rounded flex justify-between">' +
+            '  <span class="font-semibold text-slate-700">' + escapeHtml(m.material || "-") + '</span>' +
+            '  <span class="font-mono text-slate-500">' + (m.qtyConfirmed || 0) + ' ' + (m.unit || "") + '</span>' +
+            '</div>';
+        }
+        matListHtml += '</div>';
+      }
+    } catch (e) {
+      matListHtml = '<div class="text-[10px] text-red-400 italic mt-1">Error parse material</div>';
+    }
+
+    // Parse Photos (Gabung foto_material + foto_sjv)
+    var photoHtml = "";
+    var ids = [];
+    if (item.foto_material) ids = ids.concat(item.foto_material.split(","));
+    if (item.foto_sjv) ids = ids.concat(item.foto_sjv.split(","));
+    
+    // Filter empty
+    ids = ids.filter(function(x){ return x && x.trim().length > 5 });
+
+    if (ids.length > 0) {
+      photoHtml = '<div class="mt-2 flex gap-1 overflow-x-auto pb-1">';
+      for (var j=0; j<ids.length; j++) {
+        var pid = ids[j].trim();
+        var thumb = "https://lh3.googleusercontent.com/d/" + pid + "=s100";
+        // Onclick trigger lightbox
+        // Note: Kita butuh closure atau cara pass ID
+        photoHtml += 
+          '<img src="' + thumb + '" class="w-10 h-10 rounded object-cover border border-slate-200 flex-shrink-0 bg-slate-100" ' +
+          'onclick="window.openLightbox(\'' + pid + '\')">';
+      }
+      photoHtml += '</div>';
+    }
+
+    return '' +
+      '<div class="bg-white p-3 rounded-xl border border-blue-100 shadow-sm mb-3">' +
+      '  <div class="flex justify-between items-start">' +
+      '    <div>' +
+      '      <div class="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded inline-block mb-1">DATA SRM</div>' +
+      '      <div class="text-xs font-bold text-slate-800">' + escapeHtml(item.vendor_name || "Vendor Unknown") + '</div>' +
+      '      <div class="text-[10px] text-slate-500 font-mono mt-0.5">PO: ' + escapeHtml(item.po_number) + '</div>' +
+      '    </div>' +
+      '    <div class="text-right">' +
+      '      <div class="text-[10px] text-slate-400">' + safeDate(item.timestamp) + '</div>' +
+      '      <div class="text-[9px] font-mono text-slate-400">' + escapeHtml(item.git_number || "") + '</div>' +
+      '    </div>' +
+      '  </div>' +
+       matListHtml +
+       photoHtml +
+      '</div>';
+  }
+
+  // --- RENDERING FOTO BIASA ---
+  function renderPhotoItem(row) {
+    // row: [0]ID, [1]ID_FOTO, [2]KATEGORI, [3]PO, [4]GIT, [5]PIC, [6]KET, [7]TIME, ...
+    var idFoto = row[1];
+    var thumb = "https://lh3.googleusercontent.com/d/" + idFoto + "=s100";
+
+    return '' +
+      '<div class="bg-white p-2 rounded-lg border border-slate-200 shadow-sm flex gap-3 items-center mb-2">' +
+      '  <img src="' + thumb + '" class="w-12 h-12 rounded object-cover cursor-pointer bg-slate-100" ' +
+      '       onclick="window.openLightbox(\'' + idFoto + '\')">' +
+      '  <div class="flex-1 min-w-0">' +
+      '    <div class="flex justify-between">' +
+      '       <div class="text-xs font-bold text-slate-700 truncate">PO: ' + (row[3] || "-") + '</div>' +
+      '       <div class="text-[9px] bg-slate-100 px-1 rounded text-slate-500 h-fit">' + (row[2] || "FOTO") + '</div>' +
+      '    </div>' +
+      '    <div class="text-[10px] text-slate-500 truncate">' + (row[6] || "Tanpa Keterangan") + '</div>' +
+      '    <div class="text-[9px] text-slate-400 font-mono mt-0.5">' + safeDate(row[7]) + '</div>' +
+      '  </div>' +
+      '</div>';
+  }
+
+  // Helper global untuk onclick string HTML
+  window.openLightbox = function(id) {
+    lbShow(["https://lh3.googleusercontent.com/d/" + id + "=s0"], 0);
+  };
+
+  function doSearch() {
+    var qEl = $("search-input");
+    var res = $("search-results");
+    if (!qEl || !res) return;
+    
+    var rawQ = (qEl.value || "").trim();
+    if (!rawQ) return;
+
+    // --- NORMALISASI INPUT (Fitur Baru) ---
+    // Menggunakan currentPOMode yang tersimpan di state aplikasi
+    var normalizedQ = normalizePOWithMode(currentPOMode || "std", rawQ);
+    
+    // Update input UI biar user sadar auto-formatnya
+    qEl.value = normalizedQ;
+    
+    res.innerHTML = 
+      '<div class="text-center text-xs text-slate-400 mt-8">' + 
+      '  <svg class="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500"><use href="#ic-spin"></use></svg>' +
+      '  Mencari <b>' + escapeHtml(normalizedQ) + '</b> di FOTO & GIT...' +
+      '</div>';
+
+    apiGet("searchByPO", { q: normalizedQ }, function (err, json) {
+      res.innerHTML = "";
+      
+      if (err) {
+        res.innerHTML = '<div class="text-center text-xs text-red-400 mt-4">Gagal terhubung server.</div>';
+        return;
+      }
+
+      var data = (json && json.data) ? json.data : {};
+      var gits = data.git || [];
+      var photos = data.photos || [];
+
+      // Fallback legacy (jika API masih return array flat lama)
+      if (Array.isArray(json.data) || Array.isArray(json)) {
+        photos = Array.isArray(json.data) ? json.data : json;
+        gits = []; 
+      }
+
+      if (gits.length === 0 && photos.length === 0) {
+        res.innerHTML = 
+          '<div class="text-center mt-10">' +
+          '  <div class="text-4xl mb-2">🤷‍♂️</div>' +
+          '  <div class="text-sm font-bold text-slate-600">Tidak ditemukan</div>' +
+          '  <div class="text-xs text-slate-400">PO ' + escapeHtml(normalizedQ) + ' tidak ada di data FOTO maupun GIT.</div>' +
+          '</div>';
+        return;
+      }
+
+      var html = "";
+
+      // 1. Render Hasil GIT
+      if (gits.length > 0) {
+        html += '<div class="mb-2 px-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Data SRM / GIT (' + gits.length + ')</div>';
+        for (var i = 0; i < gits.length; i++) {
+          html += renderGitItem(gits[i]);
+        }
+        html += '<div class="h-4"></div>'; // spacer
+      }
+
+      // 2. Render Hasil FOTO
+      if (photos.length > 0) {
+        html += '<div class="mb-2 px-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Riwayat Foto App (' + photos.length + ')</div>';
+        for (var k = 0; k < photos.length; k++) {
+          html += renderPhotoItem(photos[k]);
+        }
+      }
+
+      res.innerHTML = html;
+    });
+  }
+
   function loadData(force) {
+     // ... kode loadData yang lama tetap sama (tidak perlu diubah untuk request ini) ...
+     // ... biarkan seperti di file asli ...
     var container = $("history-list");
     if (!container) return;
 
@@ -1984,132 +2148,15 @@
         container.innerHTML = '<div class="p-4 text-center text-xs text-red-400">Gagal memuat.</div>';
         return;
       }
-
-      // API kita kembalikan {ok:true,data:[...]} atau langsung array (legacy)
       var rows = (data && data.data && data.ok) ? data.data : data;
       if (!rows || !rows.length) {
         container.innerHTML = '<div class="p-4 text-center text-xs text-slate-300">Kosong.</div>';
         return;
       }
-
       for (var i = 0; i < rows.length; i++) {
-        var row = rows[i];
-        // row index:
-        // [0]=ID, [1]=ID_FOTO, [2]=KATEGORI, [3]=PO, [6]=KET, [7]=CREATED_AT
-        var thumb = "https://lh3.googleusercontent.com/d/" + row[1] + "=s100";
-
-        var div = document.createElement("div");
-        div.className = "flex gap-3 p-3 hover:bg-slate-50 transition border-b border-slate-50";
-
-        var img = document.createElement("img");
-        img.src = thumb;
-        img.className = "w-12 h-12 rounded bg-slate-200 object-cover cursor-pointer";
-        img.onclick = (function (id) {
-          return function () { viewImage(id); };
-        })(row[1]);
-
-        var right = document.createElement("div");
-        right.className = "flex-1 min-w-0";
-
-        var top = document.createElement("div");
-        top.className = "flex justify-between";
-
-        var tag = document.createElement("span");
-        tag.className = "text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200";
-        tag.innerText = row[2];
-
-        var time = document.createElement("span");
-        time.className = "text-[10px] text-slate-400 font-mono";
-        time.innerText = safeTime(row[7]);
-
-        top.appendChild(tag);
-        top.appendChild(time);
-
-        var mid = document.createElement("div");
-        mid.className = "mt-1";
-
-        if (row[3]) {
-          var po = document.createElement("div");
-          po.className = "text-xs font-bold text-blue-700 font-mono";
-          po.innerText = "PO: " + row[3];
-          mid.appendChild(po);
-        }
-
-        var ket = document.createElement("div");
-        ket.className = "text-[11px] text-slate-600 truncate";
-        ket.innerText = row[6] || "";
-        mid.appendChild(ket);
-
-        right.appendChild(top);
-        right.appendChild(mid);
-
-        div.appendChild(img);
-        div.appendChild(right);
-
-        container.appendChild(div);
+        container.innerHTML += renderPhotoItem(rows[i]);
       }
     });
-  }
-
-  function doSearch() {
-    var qEl = $("search-input");
-    var res = $("search-results");
-    if (!qEl || !res) return;
-    var q = (qEl.value || "").trim();
-    if (!q) return;
-
-    res.innerHTML = '<div class="text-center text-xs text-slate-400 mt-4">Mencari...</div>';
-
-    apiGet("searchByPO", { q: q }, function (err, data) {
-      res.innerHTML = "";
-      if (err) {
-        res.innerHTML = '<div class="text-center text-xs text-red-400 mt-4">Gagal.</div>';
-        return;
-      }
-
-      var rows = (data && data.data && data.ok) ? data.data : data;
-      if (!rows || !rows.length) {
-        res.innerHTML = '<div class="text-center text-xs text-red-400 mt-4">Nihil.</div>';
-        return;
-      }
-
-      for (var i = 0; i < rows.length; i++) {
-        var row = rows[i];
-        var thumb = "https://lh3.googleusercontent.com/d/" + row[1] + "=s100";
-
-        var card = document.createElement("div");
-        card.className = "bg-white p-2 rounded-lg border border-slate-200 shadow-sm flex gap-3 items-center";
-
-        var img = document.createElement("img");
-        img.src = thumb;
-        img.className = "w-10 h-10 rounded object-cover cursor-pointer";
-        img.onclick = (function (id) {
-          return function () { viewImage(id); };
-        })(row[1]);
-
-        var txt = document.createElement("div");
-        txt.className = "flex-1";
-
-        var a = document.createElement("div");
-        a.className = "text-xs font-bold text-slate-700";
-        a.innerText = "PO: " + (row[3] || "");
-
-        var b = document.createElement("div");
-        b.className = "text-[10px] text-slate-400";
-        b.innerText = safeDate(row[7]);
-
-        txt.appendChild(a);
-        txt.appendChild(b);
-
-        card.appendChild(img);
-        card.appendChild(txt);
-        res.appendChild(card);
-      }
-    });
-  }
-
-  function viewImage(id) {
-    lbShow(["https://lh3.googleusercontent.com/d/" + id + "=s0"], 0);
   }
 
   // =============================
@@ -2279,4 +2326,5 @@
   });
 
 })();
+
 

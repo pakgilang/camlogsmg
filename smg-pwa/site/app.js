@@ -2253,7 +2253,7 @@
      try { e.stopPropagation(); } catch (x2) {}
      toggleMenu();
    });
-    on($("main-menu"), "click", function () { closeMenu(); });
+    on($("main-menu-backdrop"), "click", function () { closeMenu(); });
     on($("nav-form"), "click", function (e) { e.stopPropagation(); navigate("form"); });
     on($("nav-data"), "click", function (e) { e.stopPropagation(); navigate("data"); });
     on($("nav-search"), "click", function (e) { e.stopPropagation(); navigate("search"); });
@@ -2351,6 +2351,7 @@
   });
 
 })();
+
 
 
 

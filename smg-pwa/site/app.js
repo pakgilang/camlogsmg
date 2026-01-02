@@ -1132,11 +1132,13 @@
       if (countEl) countEl.classList.add("hidden");
       if (totalEl) totalEl.classList.add("hidden");
       setEnabled(btnSave, false);
-      setEnabled(btnAdd, false);
+      // ADD PO selalu aktif: klik untuk fokus ke input PO NUMBER
+      setEnabled(btnAdd, true);
       return;
     }
 
     setEnabled(btnSave, true);
+    // ADD PO selalu aktif (meski ada/tidak ada foto)
     setEnabled(btnAdd, true);
 
     var totalKb = 0;
@@ -1266,6 +1268,23 @@
     if (el) setTimeout(function () { try { el.focus(); } catch (e) {} }, 120);
   }
 
+  // ADD PO: selalu siap untuk mulai input (tanpa menyimpan)
+  function focusAddPO() {
+    if (uiLocked) return;
+    // Pastikan user berada di tab FORM, lalu fokus ke input PO
+    try { navigate("form"); } catch (e) {}
+    var el = $("inp-po");
+    if (el) {
+      setTimeout(function () {
+        try {
+          el.focus();
+          // select agar bisa langsung ketik ulang jika sudah ada isi
+          if (el.select) el.select();
+        } catch (e2) {}
+      }, 120);
+    }
+  }
+
   function saveDraft(startNew) {
     if (uiLocked) return;
 
@@ -1299,7 +1318,15 @@
 
       persistSnapshotNow();
       showToast("success", startNew ? "PO tersimpan. Lanjut input baru." : "PO tersimpan ke daftar.");
-      focusPrimary();
+      // SIMPAN: cukup simpan ke daftar (tidak perlu auto-focus kembali ke PO).
+      // ADD PO (startNew=true): fokus ke input PO agar siap input berikutnya.
+      if (startNew) {
+        focusPrimary();
+      } else {
+        try {
+          if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+        } catch (e) {}
+      }
 
       if (navigator.onLine && uploadArmed) scheduleAutoUpload("after_save");
     }
@@ -2036,6 +2063,18 @@
     var idFoto = row[1];
     var thumb = "https://lh3.googleusercontent.com/d/" + idFoto + "=s100";
 
+    // Fix: beberapa data menyimpan kategori ganda (mis. "MATERIAL,MATERIAL").
+    // Tampilkan hanya 1 kategori untuk 1 gambar.
+    var rawCat = (row && row[2]) ? String(row[2]) : "";
+    var cat = "FOTO";
+    if (rawCat) {
+      var parts = rawCat.split(/[,|;]+/).map(function (s) { return (s || "").trim(); }).filter(Boolean);
+      if (parts.length) {
+        // ambil kategori pertama yang tidak kosong
+        cat = parts[0];
+      }
+    }
+
     return '' +
       '<div class="bg-white p-2 rounded-lg border border-slate-200 shadow-sm flex gap-3 items-center mb-2">' +
       '  <img src="' + thumb + '" class="w-12 h-12 rounded object-cover cursor-pointer bg-slate-100" ' +
@@ -2043,7 +2082,7 @@
       '  <div class="flex-1 min-w-0">' +
       '    <div class="flex justify-between">' +
       '       <div class="text-xs font-bold text-slate-700 truncate">PO: ' + (row[3] || "-") + '</div>' +
-      '       <div class="text-[9px] bg-slate-100 px-1 rounded text-slate-500 h-fit">' + (row[2] || "FOTO") + '</div>' +
+      '       <div class="text-[9px] bg-slate-100 px-1 rounded text-slate-500 h-fit">' + cat + '</div>' +
       '    </div>' +
       '    <div class="text-[10px] text-slate-500 truncate">' + (row[6] || "Tanpa Keterangan") + '</div>' +
       '    <div class="text-[9px] text-slate-400 font-mono mt-0.5">' + safeDate(row[7]) + '</div>' +
@@ -2142,7 +2181,8 @@
       "  </span>" +
       "</div>";
 
-    apiGet("getData", {}, function (err, data) {
+    // Riwayat: ambil dari sheet PENDING_MATERIAL (tanpa filter) dan tampilkan 50 data.
+    apiGet("getPendingFotoMaterial", {}, function (err, data) {
       container.innerHTML = "";
       if (err) {
         container.innerHTML = '<div class="p-4 text-center text-xs text-red-400">Gagal memuat.</div>';
@@ -2153,7 +2193,9 @@
         container.innerHTML = '<div class="p-4 text-center text-xs text-slate-300">Kosong.</div>';
         return;
       }
-      for (var i = 0; i < rows.length; i++) {
+      var max = 50;
+      var n = Math.min(rows.length, max);
+      for (var i = 0; i < n; i++) {
         container.innerHTML += renderPhotoItem(rows[i]);
       }
     });
@@ -2271,7 +2313,7 @@
 
     // actions
     on($("btn-save"), "click", function () { saveDraft(false); });
-    on($("btn-addpo"), "click", function () { saveDraft(true); });
+    on($("btn-addpo"), "click", function () { focusAddPO(); });
     on($("btn-upload"), "click", function () { uploadAll(false); });
 
     // reset

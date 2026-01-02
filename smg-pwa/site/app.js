@@ -318,7 +318,7 @@
   var previewSkeletonEl = null;
 
   var MAX_WIDTH = 1200;
-  var JPEG_QUALITY_START = 0.82;
+  var JPEG_QUALITY_START = 0.9;
   var TARGET_KB = 150;
   var processingCount = 0;
   var uiLocked = false;
@@ -2368,6 +2368,7 @@
   });
 
 })();
+
 
 
 

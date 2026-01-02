@@ -1741,7 +1741,7 @@
       "    </div>" +
       '    <div class="flex-1">' +
       '      <div class="font-extrabold text-slate-900">' + label + " berjalan</div>" +
-      '      <div class="text-[11px] text-slate-400">Harap tunggu sampai selesai. Jangan tutup browser.</div>' +
+      '      <div class="text-[11px] text-slate-400">Harap tunggu sampai selesai..</div>' +
       "    </div>" +
       "  </div>" +
       '  <div id="u_text" class="mt-3 text-sm text-slate-700">Memulai...</div>' +
@@ -2368,5 +2368,6 @@
   });
 
 })();
+
 
 

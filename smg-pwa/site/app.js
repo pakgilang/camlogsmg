@@ -317,9 +317,9 @@
   var poQueue = [];                // { kategori,no_po,git_number,pic_po,keterangan,image_ids[],photo_types[],sizes[],total_kb,po_mode,upload_id,_uploaded,status_upload_ke_srm }
   var previewSkeletonEl = null;
 
-  var MAX_WIDTH = 1600;
+  var MAX_WIDTH = 1200;
   var JPEG_QUALITY_START = 0.82;
-  var TARGET_KB = 200;
+  var TARGET_KB = 100;
   var processingCount = 0;
   var uiLocked = false;
 
@@ -2368,6 +2368,7 @@
   });
 
 })();
+
 
 
 

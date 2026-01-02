@@ -32,125 +32,6 @@
   function on(el, ev, fn) { if (el) el.addEventListener(ev, fn); }
   function clearEl(el) { while (el && el.firstChild) el.removeChild(el.firstChild); }
 
-  // ===========================
-  // AUTH (User lokal, simple & native-like)
-  // - PIN default: 123467
-  // - Persist di localStorage sampai user tekan Logout
-  // ===========================
-  var AUTH_PIN = "123467";
-  var LS_AUTH = "SMG_AUTH";
-  var LS_USER = "SMG_USER";
-
-  function getCurrentUser_() {
-    var u = "";
-    try { u = String(localStorage.getItem(LS_USER) || "").trim(); } catch (e) {}
-    return u || "Guest";
-  }
-
-  function isAuthed_() {
-    try {
-      return localStorage.getItem(LS_AUTH) === "1" && !!localStorage.getItem(LS_USER);
-    } catch (e) {
-      return false;
-    }
-  }
-
-  function setUserBadge_() {
-    var u = getCurrentUser_();
-    var lbl = $("hdr-user");
-    if (lbl) lbl.textContent = u;
-    var dot = $("hdr-user-dot");
-    if (dot) {
-      dot.classList.remove("bg-white/60", "bg-emerald-300");
-      dot.classList.add(isAuthed_() ? "bg-emerald-300" : "bg-white/60");
-    }
-  }
-
-  function authShowErr_(show) {
-    var el = $("auth-err");
-    if (!el) return;
-    el.classList.toggle("hidden", !show);
-  }
-
-  function authOpen_(force) {
-    var m = $("auth-modal");
-    if (!m) return;
-    m.classList.remove("hidden");
-
-    var closeBtn = $("auth-close");
-    var backdrop = $("auth-backdrop");
-    if (closeBtn) closeBtn.style.display = force ? "none" : "";
-    if (backdrop) backdrop.style.pointerEvents = force ? "none" : "";
-
-    var sel = $("auth-user");
-    if (sel) sel.value = isAuthed_() ? getCurrentUser_() : "";
-
-    var pin = $("auth-pin");
-    if (pin) {
-      pin.value = "";
-      setTimeout(function () { try { pin.focus(); } catch(e) {} }, 60);
-    }
-
-    authShowErr_(false);
-  }
-
-  function authClose_() {
-    var m = $("auth-modal");
-    if (!m) return;
-    m.classList.add("hidden");
-    authShowErr_(false);
-  }
-
-  function authLogout_() {
-    try {
-      localStorage.removeItem(LS_AUTH);
-      localStorage.removeItem(LS_USER);
-    } catch (e) {}
-    setUserBadge_();
-    authOpen_(true);
-  }
-
-  function authLogin_() {
-    var sel = $("auth-user");
-    var pin = $("auth-pin");
-    var user = sel ? String(sel.value || "").trim() : "";
-    var p = pin ? String(pin.value || "").trim() : "";
-
-    if (!user || p !== AUTH_PIN) {
-      authShowErr_(true);
-      try { if (pin) pin.focus(); } catch(e) {}
-      return false;
-    }
-
-    try {
-      localStorage.setItem(LS_USER, user);
-      localStorage.setItem(LS_AUTH, "1");
-    } catch (e) {}
-
-    setUserBadge_();
-    authClose_();
-    if (typeof toast === "function") toast("Login: " + user);
-    return true;
-  }
-
-  function authBoot_() {
-    setUserBadge_();
-
-    on($("btn-user"), "click", function () { authOpen_(false); });
-
-    on($("auth-close"), "click", authClose_);
-    on($("auth-backdrop"), "click", authClose_);
-
-    on($("auth-login"), "click", authLogin_);
-    on($("auth-logout"), "click", authLogout_);
-
-    on($("auth-pin"), "keydown", function (e) {
-      if (e && e.key === "Enter") authLogin_();
-    });
-
-    if (!isAuthed_()) authOpen_(true);
-  }
-
   // =============================
   // UI: MENU / NAV
   // =============================
@@ -1251,11 +1132,13 @@
       if (countEl) countEl.classList.add("hidden");
       if (totalEl) totalEl.classList.add("hidden");
       setEnabled(btnSave, false);
-      setEnabled(btnAdd, false);
+      // ADD PO selalu aktif: klik untuk fokus ke input PO NUMBER
+      setEnabled(btnAdd, true);
       return;
     }
 
     setEnabled(btnSave, true);
+    // ADD PO selalu aktif (meski ada/tidak ada foto)
     setEnabled(btnAdd, true);
 
     var totalKb = 0;
@@ -1385,6 +1268,23 @@
     if (el) setTimeout(function () { try { el.focus(); } catch (e) {} }, 120);
   }
 
+  // ADD PO: selalu siap untuk mulai input (tanpa menyimpan)
+  function focusAddPO() {
+    if (uiLocked) return;
+    // Pastikan user berada di tab FORM, lalu fokus ke input PO
+    try { navigate("form"); } catch (e) {}
+    var el = $("inp-po");
+    if (el) {
+      setTimeout(function () {
+        try {
+          el.focus();
+          // select agar bisa langsung ketik ulang jika sudah ada isi
+          if (el.select) el.select();
+        } catch (e2) {}
+      }, 120);
+    }
+  }
+
   function saveDraft(startNew) {
     if (uiLocked) return;
 
@@ -1418,7 +1318,15 @@
 
       persistSnapshotNow();
       showToast("success", startNew ? "PO tersimpan. Lanjut input baru." : "PO tersimpan ke daftar.");
-      focusPrimary();
+      // SIMPAN: cukup simpan ke daftar (tidak perlu auto-focus kembali ke PO).
+      // ADD PO (startNew=true): fokus ke input PO agar siap input berikutnya.
+      if (startNew) {
+        focusPrimary();
+      } else {
+        try {
+          if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+        } catch (e) {}
+      }
 
       if (navigator.onLine && uploadArmed) scheduleAutoUpload("after_save");
     }
@@ -1888,18 +1796,11 @@
       po_mode: item.po_mode || "std",
       status_upload_ke_srm: item.status_upload_ke_srm || "Pending",
       upload_id: item.upload_id || "",
-      created_by: getCurrentUser_(),
       _uploaded: !!item._uploaded
     };
   }
 
   function uploadAll(isAuto) {
-    if (!isAuthed_()) {
-      authOpen_(true);
-      if (typeof toast === "function") toast("Silakan login dulu.");
-      return;
-    }
-
     if (uiLocked) return;
 
     if (!hasApi()) {
@@ -2162,6 +2063,18 @@
     var idFoto = row[1];
     var thumb = "https://lh3.googleusercontent.com/d/" + idFoto + "=s100";
 
+    // Fix: beberapa data menyimpan kategori ganda (mis. "MATERIAL,MATERIAL").
+    // Tampilkan hanya 1 kategori untuk 1 gambar.
+    var rawCat = (row && row[2]) ? String(row[2]) : "";
+    var cat = "FOTO";
+    if (rawCat) {
+      var parts = rawCat.split(/[,|;]+/).map(function (s) { return (s || "").trim(); }).filter(Boolean);
+      if (parts.length) {
+        // ambil kategori pertama yang tidak kosong
+        cat = parts[0];
+      }
+    }
+
     return '' +
       '<div class="bg-white p-2 rounded-lg border border-slate-200 shadow-sm flex gap-3 items-center mb-2">' +
       '  <img src="' + thumb + '" class="w-12 h-12 rounded object-cover cursor-pointer bg-slate-100" ' +
@@ -2169,7 +2082,7 @@
       '  <div class="flex-1 min-w-0">' +
       '    <div class="flex justify-between">' +
       '       <div class="text-xs font-bold text-slate-700 truncate">PO: ' + (row[3] || "-") + '</div>' +
-      '       <div class="text-[9px] bg-slate-100 px-1 rounded text-slate-500 h-fit">' + (row[2] || "FOTO") + '</div>' +
+      '       <div class="text-[9px] bg-slate-100 px-1 rounded text-slate-500 h-fit">' + cat + '</div>' +
       '    </div>' +
       '    <div class="text-[10px] text-slate-500 truncate">' + (row[6] || "Tanpa Keterangan") + '</div>' +
       '    <div class="text-[9px] text-slate-400 font-mono mt-0.5">' + safeDate(row[7]) + '</div>' +
@@ -2268,7 +2181,8 @@
       "  </span>" +
       "</div>";
 
-    apiGet("getData", {}, function (err, data) {
+    // Riwayat: ambil dari sheet PENDING_MATERIAL (tanpa filter) dan tampilkan 50 data.
+    apiGet("getPendingFotoMaterial", {}, function (err, data) {
       container.innerHTML = "";
       if (err) {
         container.innerHTML = '<div class="p-4 text-center text-xs text-red-400">Gagal memuat.</div>';
@@ -2279,7 +2193,9 @@
         container.innerHTML = '<div class="p-4 text-center text-xs text-slate-300">Kosong.</div>';
         return;
       }
-      for (var i = 0; i < rows.length; i++) {
+      var max = 50;
+      var n = Math.min(rows.length, max);
+      for (var i = 0; i < n; i++) {
         container.innerHTML += renderPhotoItem(rows[i]);
       }
     });
@@ -2397,7 +2313,7 @@
 
     // actions
     on($("btn-save"), "click", function () { saveDraft(false); });
-    on($("btn-addpo"), "click", function () { saveDraft(true); });
+    on($("btn-addpo"), "click", function () { focusAddPO(); });
     on($("btn-upload"), "click", function () { uploadAll(false); });
 
     // reset
@@ -2418,7 +2334,6 @@
   // INIT ON LOAD
   // =============================
   window.addEventListener("load", function () {
-    authBoot_();
     previewSkeletonEl = $("preview-skeleton");
 
     bindUi();

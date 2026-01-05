@@ -78,7 +78,7 @@
       var active = (k === viewId);
       if (active) {
         btn.className =
-          "w-11 h-11 rounded-xl border border-blue-600 bg-blue-600 " +
+          "w-11 h-11 rounded-xl border border-blue-600 bg-white " +
           "flex items-center justify-center active:scale-95 transition";
       } else {
         btn.className =
@@ -88,7 +88,7 @@
 
       // switch icon color
       var svg = btn.querySelector("svg");
-      if (svg) svg.className = active ? "w-5 h-5 text-white" : "w-5 h-5 text-blue-600";
+      if (svg) svg.className = active ? "w-5 h-5 text-blue-700" : "w-5 h-5 text-blue-600";
     }
   }
 
@@ -2401,9 +2401,3 @@
   });
 
 })();
-
-
-
-
-
-

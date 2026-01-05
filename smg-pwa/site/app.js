@@ -46,7 +46,6 @@
 
   function navigate(viewId) {
     if (uiLocked) return;
-    closeMenu();
     var views = ["form", "data", "search"];
     for (var i = 0; i < views.length; i++) {
       var v = $("view-" + views[i]);
@@ -55,11 +54,45 @@
     var target = $("view-" + viewId);
     if (target) target.classList.remove("hidden");
 
+    // highlight active bottom-nav icon
+    setActiveNav(viewId);
+
     if (viewId === "data") loadData(true);
   }
 
   // =============================
-  // UI: TOAST
+  
+  // Bottom nav active highlight (3 icon)
+  function setActiveNav(viewId) {
+    var map = {
+      "form": "nav-form-icon",
+      "data": "nav-data-icon",
+      "search": "nav-search-icon"
+    };
+    var keys = ["form", "data", "search"];
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      var btn = $(map[k]);
+      if (!btn) continue;
+
+      var active = (k === viewId);
+      if (active) {
+        btn.className =
+          "w-11 h-11 rounded-xl border border-blue-600 bg-blue-600 " +
+          "flex items-center justify-center active:scale-95 transition";
+      } else {
+        btn.className =
+          "w-11 h-11 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 " +
+          "flex items-center justify-center active:scale-95 transition";
+      }
+
+      // switch icon color
+      var svg = btn.querySelector("svg");
+      if (svg) svg.className = active ? "w-5 h-5 text-white" : "w-5 h-5 text-blue-600";
+    }
+  }
+
+// UI: TOAST
   // =============================
   var toastTimer = null;
   function setSvgUse(container, href, cls) {
@@ -823,7 +856,6 @@
   // =============================
   function setUILock(lock) {
     uiLocked = lock ? true : false;
-    closeMenu();
 
     var root = $("app-root");
     if (!root) return;
@@ -2268,14 +2300,11 @@
   }
 
   function bindUi() {
-    // menu
-    on($("btn-menu"), "click", function (e) { try { e.preventDefault(); } catch (x) {} toggleMenu(); });
-    on($("main-menu"), "click", function () { closeMenu(); });
-    on($("nav-form"), "click", function (e) { e.stopPropagation(); navigate("form"); });
-    on($("nav-data"), "click", function (e) { e.stopPropagation(); navigate("data"); });
-    on($("nav-search"), "click", function (e) { e.stopPropagation(); navigate("search"); });
-
-    // overlay buttons
+    // bottom nav (3 icon)
+    on($("nav-form-icon"), "click", function () { focusAddPO(); });
+    on($("nav-data-icon"), "click", function () { navigate("data"); });
+    on($("nav-search-icon"), "click", function () { navigate("search"); });
+// overlay buttons
     on($("ovX"), "click", function () { ovClose(false); });
     on($("ovCancel"), "click", function () { ovClose(false); });
     on($("ovOk"), "click", function () { ovClose(true); });
@@ -2337,6 +2366,10 @@
     previewSkeletonEl = $("preview-skeleton");
 
     bindUi();
+
+    // default active icon = form
+    setActiveNav("form");
+
 
     // Set default mode styles
     setPOMode("std", false);

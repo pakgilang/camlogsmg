@@ -517,6 +517,9 @@
             <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
               Daftar PO Tersimpan
             </span>
+            <div class="text-[10px] text-slate-400 font-semibold">
+              <span id="stat-po">0 PO</span> • <span id="stat-foto">0 foto</span>
+            </div>
 
             <button
               id="btn-reset-all"
@@ -601,13 +604,6 @@
   <!-- BOTTOM BAR: 3 icon + upload -->
   <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 safe-bottom">
     <div class="max-w-md mx-auto px-3 py-3 flex items-center gap-2">
-      <div class="flex-1">
-        <div class="text-[11px] font-bold text-slate-700">Siap di Upload</div>
-        <div class="text-[10px] text-slate-400">
-          <span id="stat-po">0 PO</span> • <span id="stat-foto">0 foto</span>
-        </div>
-      </div>
-
       <!-- 3 ICON MENU (highlight via app.js) -->
       <div class="flex items-center gap-1">
         <button

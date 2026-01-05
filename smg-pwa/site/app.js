@@ -2148,9 +2148,16 @@
     var rawQ = (qEl.value || "").trim();
     if (!rawQ) return;
 
-    // --- NORMALISASI INPUT (Fitur Baru) ---
-    // Menggunakan currentPOMode yang tersimpan di state aplikasi
-    var normalizedQ = normalizePOWithMode(currentPOMode || "std", rawQ);
+   // --- NORMALISASI INPUT (HANYA jika 4 digit murni) ---
+   var normalizedQ = rawQ;
+   
+   // normalisasi cuma kalau user input persis 4 digit (contoh: "1234")
+   if (/^\d{4}$/.test(rawQ)) {
+     normalizedQ = normalizePOWithMode(currentPOMode || "std", rawQ);
+   
+     // Update input UI biar user sadar auto-formatnya (hanya saat memang dinormalisasi)
+     qEl.value = normalizedQ;
+   }
     
     // Update input UI biar user sadar auto-formatnya
     qEl.value = normalizedQ;
@@ -2414,5 +2421,6 @@
   });
 
 })();
+
 
 

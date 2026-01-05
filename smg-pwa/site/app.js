@@ -646,6 +646,7 @@
   function sanitizeQueueOnRestore() {
     for (var i = 0; i < poQueue.length; i++) {
       var p = poQueue[i] || {};
+      p.created_by = p.created_by || "GUEST";
       p.kategori = "MATERIAL";
       p.po_mode = p.po_mode || "std";
       p.no_po = normalizePOWithMode(p.po_mode, p.no_po || "");
@@ -1294,6 +1295,7 @@
       total_kb: total,
       po_mode: currentPOMode,
       status_upload_ke_srm: "Pending",
+      created_by: getActiveUser(),
       upload_id: "",
       _uploaded: false
     };
@@ -1837,6 +1839,7 @@
       total_kb: item.total_kb || 0,
       po_mode: item.po_mode || "std",
       status_upload_ke_srm: item.status_upload_ke_srm || "Pending",
+      created_by: item.created_by || getActiveUser(),
       upload_id: item.upload_id || "",
       _uploaded: !!item._uploaded
     };
@@ -2411,4 +2414,5 @@
   });
 
 })();
+
 

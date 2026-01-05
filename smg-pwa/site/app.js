@@ -25,6 +25,16 @@
     return !!(GAS_API_URL && API_KEY);
   }
 
+   function getActiveUser() {
+     try {
+       var u = localStorage.getItem("SMG_ACTIVE_USER") || "";
+       u = (u || "").trim();
+       return u ? u : "GUEST";
+     } catch (e) {
+       return "GUEST";
+     }
+   }
+
   // =============================
   // DOM HELPERS
   // =============================
@@ -2401,3 +2411,4 @@
   });
 
 })();
+

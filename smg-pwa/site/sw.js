@@ -1,6 +1,6 @@
 /* sw.js — SMG PWA (lightweight) */
 
-const CACHE = "smg-pwa-v4.1.7";
+const CACHE = "smg-pwa-v4.1.8";
 
 // Static assets yang aman dicache
 const ASSETS = [
@@ -63,6 +63,7 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
+
 
 
 

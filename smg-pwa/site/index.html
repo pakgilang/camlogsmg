@@ -189,13 +189,13 @@
 
 
         <button
-          id="btn-menu"
-          class="w-9 h-9 flex items-center justify-center rounded-full
-                 hover:bg-blue-600 transition active:scale-95"
+          id="user-trigger"
+          class="flex items-center gap-2 px-3 py-1.5 bg-blue-600 rounded-xl active:scale-95"
+          type="button"
+          onclick="document.getElementById('user-popup').classList.toggle('hidden')"
         >
-          <svg class="w-6 h-6 text-white">
-            <use href="#ic-bars"></use>
-          </svg>
+          <span id="net-dot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+          <span id="active-user" class="text-xs font-bold">PILIH USER</span>
         </button>
       </div>
     </div>
@@ -862,7 +862,46 @@
       navigator.serviceWorker.register("/sw.js").catch(function(){});
     }
   </script>
+
+<!-- PWA INSTALL BANNER -->
+<div id="pwa-install-banner"
+     class="hidden fixed bottom-16 left-1/2 -translate-x-1/2 z-[99]
+            w-[92vw] max-w-md rounded-2xl bg-blue-600 text-white
+            shadow-2xl px-4 py-3 flex items-center gap-3">
+  <div class="flex-1">
+    <div class="text-sm font-extrabold leading-tight">Install Logistik SMG</div>
+    <div class="text-[11px] text-blue-100">Lebih cepat • Bisa offline • Seperti aplikasi</div>
+  </div>
+  <button id="pwa-install-btn"
+          class="bg-white text-blue-600 px-3 py-1 rounded font-bold">Install</button>
+  <button id="pwa-install-close"
+          class="w-9 h-9 flex items-center justify-center rounded-full">✕</button>
+</div>
+
+<script>
+  const USER_KEY='SMG_ACTIVE_USER';
+  function getUser(){return localStorage.getItem(USER_KEY)||''}
+  function setUser(u){u?localStorage.setItem(USER_KEY,u):localStorage.removeItem(USER_KEY);renderUser()}
+  function renderUser(){const e=document.getElementById('active-user'); if(e) e.textContent=getUser()||'PILIH USER'}
+  function renderNet(){const d=document.getElementById('net-dot'); if(!d) return; d.className=navigator.onLine?'w-2 h-2 rounded-full bg-emerald-400':'w-2 h-2 rounded-full bg-red-400'}
+  window.addEventListener('online',renderNet); window.addEventListener('offline',renderNet);
+  document.addEventListener('DOMContentLoaded',()=>{renderUser();renderNet()});
+
+  let deferredInstallPrompt=null;
+  function isPwaInstalled(){return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true}
+  function showPwa(){document.getElementById('pwa-install-banner')?.classList.remove('hidden')}
+  function hidePwa(){document.getElementById('pwa-install-banner')?.classList.add('hidden')}
+  window.addEventListener('beforeinstallprompt',(e)=>{e.preventDefault();deferredInstallPrompt=e;if(!isPwaInstalled())showPwa()});
+  document.getElementById('pwa-install-btn')?.addEventListener('click',async()=>{if(!deferredInstallPrompt)return;deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;hidePwa()});
+  document.getElementById('pwa-install-close')?.addEventListener('click',hidePwa);
+  window.addEventListener('appinstalled',hidePwa);
+  if(isPwaInstalled()) hidePwa();
+</script>
+
+<style>
+.user-btn{width:100%;text-align:left;padding:.5rem;font-size:12px;border-radius:.5rem}
+.user-btn:hover{background:#f1f5f9}
+</style>
+
 </body>
 </html>
-
-

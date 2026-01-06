@@ -360,9 +360,9 @@
   var poQueue = [];                // { kategori,no_po,git_number,pic_po,keterangan,image_ids[],photo_types[],sizes[],total_kb,po_mode,upload_id,_uploaded,status_upload_ke_srm }
   var previewSkeletonEl = null;
 
-  var MAX_WIDTH = 1200;
+  var MAX_WIDTH = 1000;
   var JPEG_QUALITY_START = 0.9;
-  var TARGET_KB = 150;
+  var TARGET_KB = 90;
   var processingCount = 0;
   var uiLocked = false;
 
@@ -2421,6 +2421,7 @@
   });
 
 })();
+
 
 
 

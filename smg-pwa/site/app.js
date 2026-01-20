@@ -361,6 +361,9 @@
   var editingIndex = -1;          // index poQueue yang sedang diedit ke FORM (-1 = tidak edit)
   var previewSkeletonEl = null;
 
+  // Search tab filter state
+  var searchFilter = "all"; // all | git | foto
+
   var MAX_WIDTH = 1000;
   var JPEG_QUALITY_START = 0.9;
   var TARGET_KB = 90;
@@ -2151,6 +2154,50 @@ mid.appendChild(topRow);
     } catch (e) { return String(x || ""); }
   }
 
+  function safeDateTime(x) {
+    if (x == null || x === "") return "";
+    try {
+      var t = new Date(x);
+      if (isNaN(t.getTime())) return String(x || "");
+      return t.toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    } catch (e) {
+      return String(x || "");
+    }
+  }
+
+  // Ambil value dari object dengan beberapa kandidat key (support UPPER_SNAKE & lower_snake)
+  function pickVal(obj, keys, def) {
+    if (!obj || !keys) return def;
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      if (k && Object.prototype.hasOwnProperty.call(obj, k) && obj[k] != null && obj[k] !== "") return obj[k];
+    }
+    return def;
+  }
+
+  function toIdList(v) {
+    if (!v) return [];
+    if (Array.isArray(v)) return v.map(function (x) { return String(x || "").trim(); }).filter(Boolean);
+    var s = String(v || "").trim();
+    if (!s) return [];
+    // support JSON array string
+    if (s.charAt(0) === "[" && s.charAt(s.length - 1) === "]") {
+      try {
+        var j = JSON.parse(s);
+        if (Array.isArray(j)) return j.map(function (x) { return String(x || "").trim(); }).filter(Boolean);
+      } catch (e) {}
+    }
+    return s.split(",").map(function (x) { return String(x || "").trim(); }).filter(Boolean);
+  }
+
+  function chip(label, value) {
+    if (value == null || value === "") return "";
+    return '<span class="inline-flex items-center gap-1 text-[10px] font-bold bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">' +
+      '<span class="text-slate-400">' + escapeHtml(label) + '</span>' +
+      '<span class="text-slate-700 font-mono">' + escapeHtml(String(value)) + '</span>' +
+      '</span>';
+  }
+
   function apiGet(action, params, cb) {
     if (!hasApi()) return cb && cb(new Error("Missing config.js GAS_API_URL / API_KEY"));
 
@@ -2174,64 +2221,123 @@ mid.appendChild(topRow);
 
   // --- RENDERING GIT DATA (Card Style) ---
   function renderGitItem(item) {
-    // Parse Material JSON
-    var matListHtml = "";
+    // Support key format: UPPER_SNAKE (API v1.2) dan legacy lower_snake (searchByPO lama)
+    var vendor = pickVal(item, ["VENDOR_NAME", "vendor_name"], "Vendor Unknown");
+    var company = pickVal(item, ["COMPANY_NAME", "company_name"], "");
+    var po = pickVal(item, ["PO_NUMBER", "po_number"], "");
+    var git = pickVal(item, ["GIT_NUMBER", "git_number"], "");
+
+    var sj = pickVal(item, ["SJ_NUMBER", "sj_number"], "");
+    var truk = pickVal(item, ["TRUK_NUMBER", "truk_number"], "");
+    var koli = pickVal(item, ["KOLI_NUMBER", "koli_number"], "");
+    var jumlahKoli = pickVal(item, ["JUMLAH_KOLI", "jumlah_koli"], "");
+    var pic = pickVal(item, ["PIC_PO", "pic_po"], "");
+
+    var ts = pickVal(item, ["TIMESTAMP", "timestamp"], "");
+    var tMasuk = pickVal(item, ["TGL_MASUK", "tgl_masuk"], "");
+    var tKeluar = pickVal(item, ["TGL_KELUAR", "tgl_keluar"], "");
+    var ket = pickVal(item, ["KETERANGAN", "keterangan"], "");
+
+    // Materials: API v1.2 mengirim MATERIAL (obj/array). Legacy mengirim material_json (string)
+    var matsVal = pickVal(item, ["MATERIAL", "material", "material_json"], null);
+    var mats = [];
     try {
-      var mats = JSON.parse(item.material_json || "[]");
-      if (Array.isArray(mats) && mats.length > 0) {
-        matListHtml = '<div class="mt-2 space-y-1">';
-        for (var i = 0; i < mats.length; i++) {
-          var m = mats[i];
-          matListHtml += 
-            '<div class="text-[10px] bg-slate-50 border border-slate-100 p-1.5 rounded flex justify-between">' +
-            '  <span class="font-semibold text-slate-700">' + escapeHtml(m.material || "-") + '</span>' +
-            '  <span class="font-mono text-slate-500">' + (m.qtyConfirmed || 0) + ' ' + (m.unit || "") + '</span>' +
-            '</div>';
-        }
-        matListHtml += '</div>';
+      if (Array.isArray(matsVal)) mats = matsVal;
+      else if (matsVal && typeof matsVal === "object") mats = matsVal.items ? matsVal.items : (matsVal.materials || []);
+      else if (typeof matsVal === "string") mats = JSON.parse(matsVal || "[]");
+    } catch (e) { mats = null; }
+
+    // Photos: API v1.2 FOTO_MATERIAL array, FOTO_SJV string/list. Legacy foto_material/foto_sjv string.
+    var ids = [];
+    ids = ids.concat(toIdList(pickVal(item, ["FOTO_MATERIAL", "foto_material"], [])));
+    ids = ids.concat(toIdList(pickVal(item, ["FOTO_SJV", "foto_sjv"], [])));
+    ids = ids.filter(function (x) { return x && x.trim().length > 5; });
+
+    var metaLeft = '';
+    metaLeft += '<div class="text-[11px] font-bold text-slate-800">' + escapeHtml(vendor) + '</div>';
+    if (company) metaLeft += '<div class="text-[10px] text-slate-500">' + escapeHtml(company) + '</div>';
+    metaLeft += '<div class="mt-1 flex flex-wrap gap-1">' +
+      (po ? '<span class="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">PO: ' + escapeHtml(po) + '</span>' : '') +
+      (git ? '<span class="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">GIT: ' + escapeHtml(git) + '</span>' : '') +
+      '</div>';
+
+    var metaRight = '';
+    metaRight += '<div class="text-right">' +
+      '<div class="text-[10px] text-slate-400">' + escapeHtml(safeDateTime(ts) || safeDate(ts)) + '</div>' +
+      (tKeluar ? '<div class="text-[10px] text-emerald-700 font-semibold">Keluar: ' + escapeHtml(safeDate(tKeluar)) + '</div>' : (tMasuk ? '<div class="text-[10px] text-slate-500">Masuk: ' + escapeHtml(safeDate(tMasuk)) + '</div>' : '')) +
+      '</div>';
+
+    // chips ringkas
+    var chips = '';
+    var c = [];
+    if (sj) c.push(['SJ', sj]);
+    if (truk) c.push(['TRUK', truk]);
+    if (koli) c.push(['KOLI', koli]);
+    if (jumlahKoli) c.push(['JML', jumlahKoli]);
+    if (pic) c.push(['PIC', pic]);
+    if (c.length) {
+      chips += '<div class="mt-2 flex flex-wrap gap-1">';
+      for (var ci = 0; ci < c.length; ci++) {
+        chips += '<span class="text-[10px] bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded">' +
+          escapeHtml(c[ci][0]) + ': <span class="font-mono">' + escapeHtml(c[ci][1]) + '</span></span>';
       }
-    } catch (e) {
-      matListHtml = '<div class="text-[10px] text-red-400 italic mt-1">Error parse material</div>';
+      chips += '</div>';
     }
 
-    // Parse Photos (Gabung foto_material + foto_sjv)
-    var photoHtml = "";
-    var ids = [];
-    if (item.foto_material) ids = ids.concat(item.foto_material.split(","));
-    if (item.foto_sjv) ids = ids.concat(item.foto_sjv.split(","));
-    
-    // Filter empty
-    ids = ids.filter(function(x){ return x && x.trim().length > 5 });
+    // materials (ringkas) + detail (expand)
+    var matSummary = '';
+    var matDetail = '';
+    if (mats === null) {
+      matSummary = '<div class="text-[10px] text-red-400 italic mt-2">Error parse material</div>';
+    } else if (Array.isArray(mats) && mats.length) {
+      matSummary = '<div class="mt-2 text-[10px] text-slate-500">Material: <b>' + mats.length + '</b> item</div>';
+      matDetail = '<div class="mt-2 space-y-1">';
+      for (var i = 0; i < mats.length; i++) {
+        var m = mats[i] || {};
+        var name = m.material || m.MATERIAL || m.nama || "-";
+        var qty = (m.qtyConfirmed != null ? m.qtyConfirmed : (m.QTY_CONFIRMED != null ? m.QTY_CONFIRMED : (m.qty || m.QTY || 0)));
+        var unit = m.unit || m.UNIT || "";
+        matDetail += '<div class="text-[10px] bg-slate-50 border border-slate-100 p-1.5 rounded flex justify-between">' +
+          '<span class="font-semibold text-slate-700">' + escapeHtml(name) + '</span>' +
+          '<span class="font-mono text-slate-500">' + escapeHtml(String(qty)) + ' ' + escapeHtml(String(unit)) + '</span>' +
+          '</div>';
+      }
+      matDetail += '</div>';
+    }
 
-    if (ids.length > 0) {
+    // photos strip
+    var photoHtml = '';
+    if (ids.length) {
       photoHtml = '<div class="mt-2 flex gap-1 overflow-x-auto pb-1">';
-      for (var j=0; j<ids.length; j++) {
+      for (var j = 0; j < ids.length; j++) {
         var pid = ids[j].trim();
-        var thumb = "https://lh3.googleusercontent.com/d/" + pid + "=s100";
-        // Onclick trigger lightbox
-        // Note: Kita butuh closure atau cara pass ID
-        photoHtml += 
-          '<img src="' + thumb + '" class="w-10 h-10 rounded object-cover border border-slate-200 flex-shrink-0 bg-slate-100" ' +
+        var thumb = 'https://lh3.googleusercontent.com/d/' + pid + '=w120-h120-k-no-nu';
+        photoHtml += '<img src="' + thumb + '" class="w-11 h-11 rounded-lg object-cover border border-slate-200 flex-shrink-0 bg-slate-100" ' +
           'onclick="window.openLightbox(\'' + pid + '\')">';
       }
       photoHtml += '</div>';
     }
 
+    var detailId = 'gitd_' + Math.random().toString(16).slice(2);
+    var hasDetail = (!!matDetail) || (!!ket);
+
     return '' +
       '<div class="bg-white p-3 rounded-xl border border-blue-100 shadow-sm mb-3">' +
-      '  <div class="flex justify-between items-start">' +
-      '    <div>' +
+      '  <div class="flex justify-between items-start gap-3">' +
+      '    <div class="min-w-0">' +
       '      <div class="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded inline-block mb-1">DATA SRM</div>' +
-      '      <div class="text-xs font-bold text-slate-800">' + escapeHtml(item.vendor_name || "Vendor Unknown") + '</div>' +
-      '      <div class="text-[10px] text-slate-500 font-mono mt-0.5">PO: ' + escapeHtml(item.po_number) + '</div>' +
+      metaLeft +
       '    </div>' +
-      '    <div class="text-right">' +
-      '      <div class="text-[10px] text-slate-400">' + safeDate(item.timestamp) + '</div>' +
-      '      <div class="text-[9px] font-mono text-slate-400">' + escapeHtml(item.git_number || "") + '</div>' +
-      '    </div>' +
+      '    <div class="flex-shrink-0">' + metaRight + '</div>' +
       '  </div>' +
-       matListHtml +
-       photoHtml +
+      (chips || '') +
+      (ket ? '<div class="mt-2 text-[10px] text-slate-500">Ket: <span class="text-slate-700">' + escapeHtml(ket) + '</span></div>' : '') +
+      (matSummary || '') +
+      (photoHtml || '') +
+      (hasDetail ?
+        ('<button type="button" class="mt-2 text-[11px] font-bold text-blue-700 hover:text-blue-800 active:scale-95" data-toggle="' + detailId + '">Lihat detail</button>' +
+         '<div id="' + detailId + '" class="hidden">' + (matDetail || '') + '</div>')
+        : '') +
       '</div>';
   }
 
@@ -2272,6 +2378,58 @@ mid.appendChild(topRow);
   window.openLightbox = function(id) {
     lbShow(["https://lh3.googleusercontent.com/d/" + id + "=s0"], 0);
   };
+
+  function setSearchFilter(filter) {
+    searchFilter = filter || "all";
+    var g = $("sr-git");
+    var f = $("sr-foto");
+    if (g) g.classList.toggle("hidden", searchFilter === "foto");
+    if (f) f.classList.toggle("hidden", searchFilter === "git");
+
+    // toggle button style
+    var bAll = $("search-filter-all");
+    var bGit = $("search-filter-git");
+    var bFoto = $("search-filter-foto");
+    var pairs = [
+      [bAll, searchFilter === "all"],
+      [bGit, searchFilter === "git"],
+      [bFoto, searchFilter === "foto"],
+    ];
+    for (var i = 0; i < pairs.length; i++) {
+      var btn = pairs[i][0];
+      var active = pairs[i][1];
+      if (!btn) continue;
+      btn.className = active
+        ? "px-2 py-1 rounded-lg text-[11px] font-bold border border-blue-200 bg-blue-50 text-blue-700 active:scale-95"
+        : "px-2 py-1 rounded-lg text-[11px] font-bold border border-slate-200 bg-white hover:bg-slate-50 active:scale-95";
+    }
+  }
+
+  function renderSearchSummary(q, gCount, pCount) {
+    return '' +
+      '<div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm mb-3">' +
+      '  <div class="flex items-start justify-between gap-3">' +
+      '    <div class="min-w-0">' +
+      '      <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hasil Pencarian</div>' +
+      '      <div class="text-sm font-bold text-slate-800 mt-0.5">PO: <span class="font-mono">' + escapeHtml(q || "") + '</span></div>' +
+      '      <div class="text-[11px] text-slate-500 mt-0.5">' +
+      '        <span class="inline-flex items-center gap-1">' +
+      '          <span class="w-2 h-2 rounded-full bg-blue-500"></span>' +
+      '          <span>GIT: <b>' + (gCount || 0) + '</b></span>' +
+      '        </span>' +
+      '        <span class="mx-2 text-slate-300">|</span>' +
+      '        <span class="inline-flex items-center gap-1">' +
+      '          <span class="w-2 h-2 rounded-full bg-slate-500"></span>' +
+      '          <span>Foto: <b>' + (pCount || 0) + '</b></span>' +
+      '        </span>' +
+      '      </div>' +
+      '    </div>' +
+      '    <div class="flex-shrink-0 text-right">' +
+      '      <div class="text-[10px] text-slate-400">' + escapeHtml(safeDateTime(new Date())) + '</div>' +
+      '    </div>' +
+      '  </div>' +
+      '</div>';
+  }
 
   function doSearch() {
     var qEl = $("search-input");
@@ -2331,24 +2489,30 @@ mid.appendChild(topRow);
 
       var html = "";
 
+      // ringkasan
+      html += renderSearchSummary(normalizedQ, gits.length, photos.length);
+
       // 1. Render Hasil GIT
       if (gits.length > 0) {
+        html += '<div id="sr-git">';
         html += '<div class="mb-2 px-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Data SRM / GIT (' + gits.length + ')</div>';
-        for (var i = 0; i < gits.length; i++) {
-          html += renderGitItem(gits[i]);
-        }
-        html += '<div class="h-4"></div>'; // spacer
+        for (var i = 0; i < gits.length; i++) html += renderGitItem(gits[i]);
+        html += '<div class="h-2"></div>';
+        html += '</div>';
       }
 
       // 2. Render Hasil FOTO
       if (photos.length > 0) {
+        html += '<div id="sr-foto">';
         html += '<div class="mb-2 px-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Riwayat Foto App (' + photos.length + ')</div>';
-        for (var k = 0; k < photos.length; k++) {
-          html += renderPhotoItem(photos[k]);
-        }
+        for (var k = 0; k < photos.length; k++) html += renderPhotoItem(photos[k]);
+        html += '</div>';
       }
 
       res.innerHTML = html;
+
+      // apply current filter after render
+      setSearchFilter(searchFilter);
     });
   }
 
@@ -2511,6 +2675,38 @@ mid.appendChild(topRow);
       var k = e && e.key ? e.key : "";
       if (k === "Enter") { try { e.preventDefault(); } catch (x) {} doSearch(); }
     });
+
+    on($("btn-search-clear"), "click", function () {
+      var qEl = $("search-input");
+      var res = $("search-results");
+      if (qEl) qEl.value = "";
+      if (res) res.innerHTML = "";
+      setSearchFilter("all");
+    });
+
+    on($("search-filter-all"), "click", function () { setSearchFilter("all"); });
+    on($("search-filter-git"), "click", function () { setSearchFilter("git"); });
+    on($("search-filter-foto"), "click", function () { setSearchFilter("foto"); });
+
+    // event delegation: toggle detail blocks inside search results
+    var sr = $("search-results");
+    if (sr) {
+      on(sr, "click", function (ev) {
+        var t = ev && ev.target ? ev.target : null;
+        if (!t) return;
+        var toggleId = t.getAttribute ? t.getAttribute("data-toggle") : null;
+        if (!toggleId) {
+          // maybe inner element inside button
+          var p = t.closest ? t.closest("[data-toggle]") : null;
+          toggleId = p && p.getAttribute ? p.getAttribute("data-toggle") : null;
+        }
+        if (toggleId) {
+          var d = document.getElementById(toggleId);
+          if (d) d.classList.toggle("hidden");
+          return;
+        }
+      });
+    }
   }
 
   // =============================

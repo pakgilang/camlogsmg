@@ -203,7 +203,7 @@
           <div class="leading-tight">
             <h1 class="font-bold text-base tracking-wide">Logistik SMG</h1>
             <p class="text-[10px] text-blue-200 font-mono opacity-90">
-              v5.0 / mode: HP KENTANG
+              v4.1 / mode: HP KENTANG
             </p>
           </div>
         </div>
@@ -593,25 +593,55 @@
 
       <!-- VIEW: SEARCH -->
       <div id="view-search" class="hidden fade-in">
-        <div class="bg-white p-3 rounded-lg shadow-sm border border-slate-200 flex gap-2">
-          <input
-            type="text"
-            id="search-input"
-            class="flex-1 bg-slate-50 border border-slate-200 rounded-lg
-                   px-3 py-2 text-sm focus:outline-none focus:ring-1
-                   focus:ring-blue-500"
-            placeholder="Cari No. PO..."
-            inputmode="text"
-          >
+        <div class="bg-white p-3 rounded-lg shadow-sm border border-slate-200">
+          <div class="flex gap-2">
+            <input
+              type="text"
+              id="search-input"
+              class="flex-1 bg-slate-50 border border-slate-200 rounded-lg
+                     px-3 py-2 text-sm focus:outline-none focus:ring-1
+                     focus:ring-blue-500"
+              placeholder="Cari No. PO / 4 digit (auto format)"
+              inputmode="text"
+            >
 
-          <button
-            id="btn-search"
-            class="bg-blue-600 text-white px-4 rounded-lg
-                   text-sm font-bold shadow-sm active:scale-95"
-            type="button"
-          >
-            <svg class="w-5 h-5"><use href="#ic-search"></use></svg>
-          </button>
+            <button
+              id="btn-search"
+              class="bg-blue-600 text-white px-4 rounded-lg
+                     text-sm font-bold shadow-sm active:scale-95"
+              type="button"
+              title="Cari (Enter)"
+            >
+              <svg class="w-5 h-5"><use href="#ic-search"></use></svg>
+            </button>
+          </div>
+
+          <div class="mt-2 flex items-center justify-between gap-2">
+            <div id="search-hint" class="text-[11px] text-slate-400">
+              Tips: tekan <b>Enter</b> untuk cari. Hasil dipisah: <b>Data SRM/GIT</b> dan <b>Riwayat Foto App</b>.
+            </div>
+            <button
+              id="btn-search-clear"
+              class="text-[11px] font-bold text-slate-500 hover:text-slate-700 bg-slate-100
+                     px-2 py-1 rounded-lg active:scale-95"
+              type="button"
+              title="Bersihkan"
+            >
+              Clear
+            </button>
+          </div>
+
+          <div class="mt-2 flex items-center gap-2">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Filter</div>
+            <div class="flex items-center gap-1">
+              <button id="search-filter-all" type="button"
+                class="px-2 py-1 rounded-lg text-[11px] font-bold border border-slate-200 bg-white hover:bg-slate-50 active:scale-95">Semua</button>
+              <button id="search-filter-git" type="button"
+                class="px-2 py-1 rounded-lg text-[11px] font-bold border border-slate-200 bg-white hover:bg-slate-50 active:scale-95">GIT</button>
+              <button id="search-filter-foto" type="button"
+                class="px-2 py-1 rounded-lg text-[11px] font-bold border border-slate-200 bg-white hover:bg-slate-50 active:scale-95">Foto</button>
+            </div>
+          </div>
         </div>
 
         <div id="search-results" class="mt-3 space-y-2 pb-20"></div>
@@ -891,6 +921,5 @@
   </script>
 </body>
 </html>
-
 
 

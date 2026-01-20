@@ -497,7 +497,24 @@
               <svg class="w-5 h-5"><use href="#ic-plus"></use></svg>
               <span>ADD NO.PO</span>
             </button>
+          
+          <!-- EDIT MODE BANNER -->
+          <div id="edit-banner"
+               class="hidden mt-2 p-2 rounded-xl border border-amber-200 bg-amber-50
+                      flex items-center justify-between gap-2">
+            <div class="text-[11px] font-bold text-amber-800 truncate" id="edit-label">EDIT</div>
+            <button id="btn-cancel-edit"
+                    type="button"
+                    class="text-[10px] font-extrabold text-red-700 bg-white
+                           border border-red-200 px-2 py-1 rounded-lg active:scale-95">
+              <span class="inline-flex items-center gap-1">
+                <svg class="w-4 h-4"><use href="#ic-x"></use></svg>
+                <span>Batal</span>
+              </span>
+            </button>
           </div>
+
+</div>
 
           <div class="text-[10px] text-slate-400">
             * SIMPAN = masukkan PO ke daftar. ADD PO = fokus ke input PO NUMBER.

@@ -358,6 +358,7 @@
   var currentCategory = "MATERIAL"; // fixed for MVP
   var capturedFiles = [];          // { id, dataUrl, sizeKb, jenis }
   var poQueue = [];                // { kategori,no_po,git_number,pic_po,keterangan,image_ids[],photo_types[],sizes[],total_kb,po_mode,upload_id,_uploaded,status_upload_ke_srm }
+  var editingIndex = -1;          // index poQueue yang sedang diedit ke FORM (-1 = tidak edit)
   var previewSkeletonEl = null;
 
   var MAX_WIDTH = 1000;
@@ -1329,7 +1330,100 @@
     }
   }
 
-  function saveDraft(startNew) {
+  
+  // =============================
+  // EDIT -> KEMBALI KE FORM (bukan popup)
+  // =============================
+  function updateEditBanner() {
+    var bar = $("edit-banner");
+    var label = $("edit-label");
+    if (!bar) return;
+
+    if (editingIndex >= 0 && poQueue[editingIndex]) {
+      var p = poQueue[editingIndex];
+      var txt = "EDIT: " + ((p && p.no_po) ? p.no_po : "PO");
+      if (label) label.innerText = txt;
+      bar.classList.remove("hidden");
+    } else {
+      bar.classList.add("hidden");
+      if (label) label.innerText = "";
+    }
+  }
+
+  function cancelEditMode(silent) {
+    editingIndex = -1;
+    updateEditBanner();
+    if (!silent) showToast("info", "Mode edit dibatalkan.");
+  }
+
+  function startEditPOToForm(idx) {
+    if (uiLocked) return;
+    if (idx < 0 || idx >= poQueue.length) return;
+
+    var p = poQueue[idx];
+    if (!p) return;
+
+    function proceed() {
+      editingIndex = idx;
+      updateEditBanner();
+
+      // pindah ke FORM
+      try { navigate("form"); } catch (e) {}
+
+      // set mode & isi input
+      setPOMode(p.po_mode || "std", false);
+
+      var elPo = $("inp-po");
+      var elGit = $("inp-git");
+      var elPic = $("inp-pic");
+      var elKet = $("inp-ket");
+      if (elPo) elPo.value = p.no_po || "";
+      if (elGit) elGit.value = p.git_number || "";
+      if (elPic) elPic.value = p.pic_po || "";
+      if (elKet) elKet.value = p.keterangan || "";
+
+      // buka optional fields biar meta kelihatan saat edit
+      var opt = $("optional-fields");
+      if (opt) opt.classList.remove("hidden");
+
+      // hydrate foto dari DB -> capturedFiles
+      var meta = [];
+      var ids = p.image_ids || [];
+      var sizes = p.sizes || [];
+      var types = p.photo_types || [];
+      for (var i = 0; i < ids.length; i++) {
+        meta.push({
+          id: ids[i],
+          sizeKb: sizes[i] || 0,
+          jenis: types[i] || "MATERIAL"
+        });
+      }
+
+      hydrateCapturedFilesFromDB(meta, function () {
+        sanitizeCapturedOnRestore();
+        updatePreviewUI();
+        refreshStats();
+        saveStateDebounced();
+        showToast("info", "Mode edit aktif. Ubah data lalu klik SIMPAN untuk update.");
+        focusPrimary();
+      });
+    }
+
+    // Jika user sedang pegang draft lain, jangan timpa diam-diam
+    if (capturedFiles && capturedFiles.length > 0) {
+      uiConfirm(
+        "Ganti ke Edit PO?",
+        "Draft foto yang sedang aktif akan diganti dengan foto dari PO yang dipilih.",
+        "Ya, Lanjut Edit",
+        function (ok) { if (ok) proceed(); }
+      );
+      return;
+    }
+
+    proceed();
+  }
+
+function saveDraft(startNew) {
     if (uiLocked) return;
 
     normalizeCurrentPOInput();
@@ -1341,7 +1435,32 @@
     if (err) { showToast("warning", err); return; }
 
     function proceedSave() {
-      poQueue.push(payload);
+      // Jika sedang edit (Edit -> kembali ke FORM), update item lama (bukan push baru)
+      if (editingIndex >= 0 && poQueue[editingIndex]) {
+        var old = poQueue[editingIndex];
+
+        // Pertahankan upload_id bila PO tidak berubah (idempotent).
+        // Jika No PO berubah, reset upload_id dan tandai ulang sebagai belum ter-upload.
+        payload.upload_id = old.upload_id || payload.upload_id || makeUploadId();
+        payload._uploaded = !!old._uploaded;
+
+        if ((old.no_po || "") !== (payload.no_po || "")) {
+          payload.upload_id = makeUploadId();
+          payload._uploaded = false;
+        }
+
+        // Keep existing status if any
+        payload.status_upload_ke_srm = old.status_upload_ke_srm || payload.status_upload_ke_srm || "Pending";
+
+        poQueue[editingIndex] = payload;
+        editingIndex = -1;
+
+        showToast("success", "PO berhasil diupdate.");
+      } else {
+        poQueue.push(payload);
+        showToast("success", startNew ? "PO tersimpan. Lanjut input baru." : "PO tersimpan ke daftar.");
+      }
+
       renderPOList();
       refreshStats();
 
@@ -1360,9 +1479,12 @@
       var opt = $("optional-fields");
       if (opt) opt.classList.add("hidden");
 
+      // Matikan banner edit jika ada
+      updateEditBanner();
+
       persistSnapshotNow();
-      showToast("success", startNew ? "PO tersimpan. Lanjut input baru." : "PO tersimpan ke daftar.");
-      // SIMPAN: cukup simpan ke daftar (tidak perlu auto-focus kembali ke PO).
+
+      // SIMPAN: cukup simpan/update ke daftar (tidak perlu auto-focus kembali ke PO).
       // ADD PO (startNew=true): fokus ke input PO agar siap input berikutnya.
       if (startNew) {
         focusPrimary();
@@ -1373,9 +1495,7 @@
       }
 
       if (navigator.onLine && uploadArmed) scheduleAutoUpload("after_save");
-    }
-
-    if (!payload.no_po) {
+    }if (!payload.no_po) {
       uiConfirm(
         "Tanpa No PO?",
         "No PO kosong. Lanjut simpan tanpa No PO?",
@@ -1483,7 +1603,7 @@
         topRow.appendChild(del);
 
         var btnRow = document.createElement("div");
-        btnRow.className = "mt-2 grid grid-cols-2 gap-2";
+        btnRow.className = "mt-2 grid grid-cols-3 gap-2";
 
         var b1 = document.createElement("button");
         b1.className =
@@ -1505,12 +1625,25 @@
           '  <svg class="w-4 h-4"><use href="#ic-pen"></use></svg>' +
           "  <span>Edit</span>" +
           "</span>";
-        b2.onclick = function () { editPO(idx); };
+        // Edit utama: balik ke FORM + foto (bukan popup)
+        b2.onclick = function () { startEditPOToForm(idx); };
+
+        var b3 = document.createElement("button");
+        b3.className =
+          "bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 " +
+          "text-[11px] font-bold py-2 rounded-lg active:scale-95";
+        b3.innerHTML =
+          '<span class="inline-flex items-center gap-1">' +
+          '  <svg class="w-4 h-4"><use href="#ic-hash"></use></svg>' +
+          "  <span>Meta</span>" +
+          "</span>";
+        // Meta cepat (popup) tetap tersedia
+        b3.onclick = function () { editPO(idx); };
 
         btnRow.appendChild(b1);
         btnRow.appendChild(b2);
-
-        mid.appendChild(topRow);
+        btnRow.appendChild(b3);
+mid.appendChild(topRow);
         mid.appendChild(btnRow);
 
         inner.appendChild(thumbBox);
@@ -2363,6 +2496,7 @@
     // actions
     on($("btn-save"), "click", function () { saveDraft(false); });
     on($("btn-addpo"), "click", function () { focusAddPO(); });
+    on($("btn-cancel-edit"), "click", function () { cancelEditMode(false); });
     on($("btn-upload"), "click", function () { uploadAll(false); });
 
     // reset

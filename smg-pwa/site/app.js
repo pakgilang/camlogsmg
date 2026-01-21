@@ -366,7 +366,7 @@
 
   var MAX_WIDTH = 1000;
   var JPEG_QUALITY_START = 0.9;
-  var TARGET_KB = 90;
+  var TARGET_KB = 60;
   var processingCount = 0;
   var uiLocked = false;
 
@@ -2751,6 +2751,7 @@ mid.appendChild(topRow);
   });
 
 })();
+
 
 
 

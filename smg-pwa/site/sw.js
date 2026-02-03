@@ -1,6 +1,6 @@
 /* sw.js — SMG PWA (lightweight) */
 
-const CACHE = "smg-pwa-v7.0.3";
+const CACHE = "smg-pwa-v7.0.4";
 
 // Static assets yang aman dicache
 const ASSETS = [

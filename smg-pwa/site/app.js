@@ -1896,6 +1896,7 @@ mid.appendChild(topRow);
 
     if (pending.length === 0) {
       if (!isAuto) {
+        uploadArmed = false;
         poQueue = [];
         clearPersistedState();
         renderPOList();
@@ -1918,6 +1919,8 @@ mid.appendChild(topRow);
   function uploadNextPending(pos, pendingIdxs, isAuto) {
     if (pos >= pendingIdxs.length) {
       finalizeUploadUI();
+      uploadArmed = false;
+      autoUploadBusy = false;
 
       var all = [];
       for (var i = 0; i < poQueue.length; i++) {

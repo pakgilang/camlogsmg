@@ -98,7 +98,7 @@
 
       // switch icon color
       var svg = btn.querySelector("svg");
-      if (svg) svg.className = active ? "w-5 h-5 text-blue-700" : "w-5 h-5 text-blue-600";
+      if (svg) svg.setAttribute("class", active ? "w-5 h-5 text-blue-700" : "w-5 h-5 text-blue-600");
     }
   }
 
@@ -277,6 +277,204 @@
   var lbIndex = 0;
   var lbPushed = false;
   var lbClosingViaBack = false;
+  var lbMeta = { ids: null, source: "", queueIndex: -1 };
+  var lbDraw = {
+    active: false,
+    baseImg: null,
+    strokes: [],
+    drawing: false,
+    color: "#ef4444",
+    width: 8
+  };
+
+  function lbGetCurrentPhotoId() {
+    try {
+      return (lbMeta && lbMeta.ids && lbMeta.ids[lbIndex]) ? String(lbMeta.ids[lbIndex]) : "";
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function lbCanAnnotate() {
+    var id = lbGetCurrentPhotoId();
+    var src = lbItems && lbItems[lbIndex] ? String(lbItems[lbIndex]) : "";
+    return !!(id && src && src.indexOf("data:image") === 0);
+  }
+
+  function lbSetNavDisabled(disabled) {
+    var prev = $("lb-prev");
+    var next = $("lb-next");
+    var toggle = $("lb-draw-toggle");
+    try {
+      if (prev) prev.disabled = !!disabled;
+      if (next) next.disabled = !!disabled;
+      if (toggle) toggle.disabled = !!disabled;
+    } catch (e) {}
+  }
+
+  function lbSyncCanvasCssToImage() {
+    try {
+      var imgEl = $("lbImg");
+      var cv = $("lbCanvas");
+      if (!imgEl || !cv) return;
+      var r = imgEl.getBoundingClientRect();
+      if (!r || !r.width || !r.height) return;
+      cv.style.width = r.width + "px";
+      cv.style.height = r.height + "px";
+    } catch (e) {}
+  }
+
+  function lbRenderDraw() {
+    var cv = $("lbCanvas");
+    if (!cv) return;
+    var ctx = cv.getContext("2d");
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    if (lbDraw.baseImg) ctx.drawImage(lbDraw.baseImg, 0, 0, cv.width, cv.height);
+
+    for (var i = 0; i < lbDraw.strokes.length; i++) {
+      var s = lbDraw.strokes[i];
+      if (!s || !s.pts || s.pts.length < 2) continue;
+      ctx.strokeStyle = s.color || "#ef4444";
+      ctx.lineWidth = s.width || 8;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(s.pts[0][0], s.pts[0][1]);
+      for (var j = 1; j < s.pts.length; j++) ctx.lineTo(s.pts[j][0], s.pts[j][1]);
+      ctx.stroke();
+    }
+  }
+
+  function lbExitDrawMode() {
+    var cv = $("lbCanvas");
+    var bar = $("lbDrawBar");
+    if (cv) cv.classList.add("hidden");
+    if (bar) bar.classList.add("hidden");
+    lbDraw.active = false;
+    lbDraw.baseImg = null;
+    lbDraw.strokes = [];
+    lbDraw.drawing = false;
+    lbSetNavDisabled(false);
+  }
+
+  function lbEnterDrawMode() {
+    if (!lbCanAnnotate()) {
+      showToast("warning", "Coret hanya untuk foto draft (sebelum upload).");
+      return;
+    }
+
+    var src = String(lbItems[lbIndex] || "");
+    var img = new Image();
+    img.onload = function () {
+      var cv = $("lbCanvas");
+      var bar = $("lbDrawBar");
+      if (!cv || !bar) return;
+
+      lbDraw.active = true;
+      lbDraw.baseImg = img;
+      lbDraw.strokes = [];
+      lbDraw.drawing = false;
+      lbDraw.color = "#ef4444";
+      lbDraw.width = 8;
+
+      cv.width = img.naturalWidth || img.width || 1;
+      cv.height = img.naturalHeight || img.height || 1;
+
+      cv.classList.remove("hidden");
+      bar.classList.remove("hidden");
+      lbSetNavDisabled(true);
+      lbSyncCanvasCssToImage();
+      lbRenderDraw();
+    };
+    img.onerror = function () {
+      showToast("error", "Gagal memuat gambar untuk dicoret.");
+    };
+    img.src = src;
+  }
+
+  function lbDrawPointFromEvent(e) {
+    var cv = $("lbCanvas");
+    if (!cv) return null;
+    var r = cv.getBoundingClientRect();
+    var x = (e.clientX - r.left) * (cv.width / Math.max(1, r.width));
+    var y = (e.clientY - r.top) * (cv.height / Math.max(1, r.height));
+    return [x, y];
+  }
+
+  function lbDrawUndo() {
+    if (!lbDraw.active) return;
+    if (!lbDraw.strokes.length) return;
+    lbDraw.strokes.pop();
+    lbRenderDraw();
+  }
+
+  function lbDrawClear() {
+    if (!lbDraw.active) return;
+    lbDraw.strokes = [];
+    lbRenderDraw();
+  }
+
+  function recalcQueueTotalKb(p) {
+    if (!p) return 0;
+    var total = 0;
+    var sizes = p.sizes || [];
+    for (var i = 0; i < sizes.length; i++) total += (sizes[i] || 0);
+    p.total_kb = total;
+    return total;
+  }
+
+  function lbApplySavedPhoto(photoId, dataUrl, sizeKb) {
+    if (!photoId) return;
+
+    for (var i = 0; i < capturedFiles.length; i++) {
+      if (capturedFiles[i] && capturedFiles[i].id === photoId) {
+        capturedFiles[i].dataUrl = dataUrl || "";
+        capturedFiles[i].sizeKb = sizeKb || 0;
+      }
+    }
+
+    if (lbMeta && lbMeta.source === "queue" && lbMeta.queueIndex >= 0 && poQueue[lbMeta.queueIndex]) {
+      var p = poQueue[lbMeta.queueIndex];
+      var ids = p.image_ids || [];
+      var sizes = p.sizes || [];
+      for (var j = 0; j < ids.length; j++) {
+        if (ids[j] === photoId) {
+          sizes[j] = sizeKb || 0;
+          break;
+        }
+      }
+      p.sizes = sizes;
+      recalcQueueTotalKb(p);
+      renderPOList();
+      refreshStats();
+      persistSnapshotNow();
+    }
+
+    updatePreviewUI();
+    saveStateDebounced();
+  }
+
+  function lbDrawSave() {
+    if (!lbDraw.active) return;
+    var photoId = lbGetCurrentPhotoId();
+    var cv = $("lbCanvas");
+    if (!photoId || !cv) return;
+
+    var packed = smartCompress(cv);
+    var dataUrl = packed.dataUrl || "";
+    var sizeKb = packed.sizeKb || 0;
+
+    lbItems[lbIndex] = dataUrl;
+    lbExitDrawMode();
+    lbRender();
+
+    photoPut(photoId, dataUrl, function () {
+      lbApplySavedPhoto(photoId, dataUrl, sizeKb);
+      showToast("success", "Coretan tersimpan (" + sizeKb + " KB).");
+    });
+  }
 
   function lbRender() {
     var img = $("lbImg");
@@ -284,12 +482,21 @@
     if (!img) return;
     img.src = lbItems[lbIndex] || "";
     if (cnt) cnt.innerText = (lbIndex + 1) + " / " + (lbItems.length || 1);
+    setTimeout(lbSyncCanvasCssToImage, 0);
+
+    var toggle = $("lb-draw-toggle");
+    if (toggle) {
+      if (lbCanAnnotate()) toggle.classList.remove("hidden");
+      else toggle.classList.add("hidden");
+    }
   }
 
-  function lbShow(items, startIndex) {
+  function lbShow(items, startIndex, meta) {
     if (!items || !items.length) return;
+    lbExitDrawMode();
     lbItems = items;
     lbIndex = Math.max(0, Math.min(items.length - 1, startIndex || 0));
+    lbMeta = meta || { ids: null, source: "", queueIndex: -1 };
 
     var el = $("lb");
     if (!el) return;
@@ -313,9 +520,11 @@
     var el = $("lb");
     if (el) el.classList.add("hidden");
 
+    lbExitDrawMode();
     lbOpenFlag = false;
     lbItems = [];
     lbIndex = 0;
+    lbMeta = { ids: null, source: "", queueIndex: -1 };
     document.removeEventListener("keydown", lbKeydown);
 
     if (lbPushed && !lbClosingViaBack) {
@@ -328,19 +537,24 @@
 
   function lbPrev() {
     if (!lbItems.length) return;
+    if (lbDraw.active) return;
     lbIndex = (lbIndex - 1 + lbItems.length) % lbItems.length;
     lbRender();
   }
 
   function lbNext() {
     if (!lbItems.length) return;
+    if (lbDraw.active) return;
     lbIndex = (lbIndex + 1) % lbItems.length;
     lbRender();
   }
 
   function lbKeydown(e) {
     var k = e && e.key ? e.key : "";
-    if (k === "Escape") lbClose();
+    if (k === "Escape") {
+      if (lbDraw.active) lbExitDrawMode();
+      else lbClose();
+    }
     if (k === "ArrowLeft") lbPrev();
     if (k === "ArrowRight") lbNext();
   }
@@ -350,6 +564,11 @@
       lbClosingViaBack = true;
       lbClose();
     }
+  });
+
+  window.addEventListener("resize", function () {
+    if (!lbOpenFlag) return;
+    lbSyncCanvasCssToImage();
   });
 
   // =============================
@@ -999,55 +1218,103 @@
   // =============================
   // SMART COMPRESSION
   // =============================
-  function calcKB(dataUrl) { return Math.round((dataUrl.length * 0.75) / 1024); }
+  function calcKB(dataUrl) {
+    try {
+      var s = String(dataUrl || "");
+      var comma = s.indexOf(",");
+      var b64 = (comma >= 0) ? s.substring(comma + 1) : s;
+      var len = b64.length;
+      if (!len) return 0;
+      var pad = 0;
+      if (b64.charAt(len - 1) === "=") pad++;
+      if (b64.charAt(len - 2) === "=") pad++;
+      var bytes = Math.floor((len * 3) / 4) - pad;
+      return Math.max(0, Math.round(bytes / 1024));
+    } catch (e) {
+      return 0;
+    }
+  }
 
   function smartCompress(canvas) {
-    var q = JPEG_QUALITY_START;
-    var minQ = 0.45;
-    var step = 0.07;
+    var targetKb = TARGET_KB || 60;
+    var qHi = JPEG_QUALITY_START || 0.9;
+    var qLo = 0.25;
+    var qLoFloor = 0.05;
+    var minShort = 64;
 
-    var dataUrl = canvas.toDataURL("image/jpeg", q);
-    var sizeKb = calcKB(dataUrl);
-
-    var guard = 0;
-    while (sizeKb > TARGET_KB && q > minQ && guard < 12) {
-      guard++;
-      q = q - step;
-      if (q < minQ) q = minQ;
-      dataUrl = canvas.toDataURL("image/jpeg", q);
-      sizeKb = calcKB(dataUrl);
-      if (q === minQ) break;
+    function encodeJpeg(c, q) {
+      var dataUrl = c.toDataURL("image/jpeg", q);
+      return { dataUrl: dataUrl, sizeKb: calcKB(dataUrl), q: q };
     }
 
-    var down = 0;
-    while (sizeKb > TARGET_KB && down < 2) {
-      down++;
-      var scale = (down === 1) ? 0.90 : 0.85;
-      var w = Math.max(320, Math.round(canvas.width * scale));
-      var h = Math.max(240, Math.round(canvas.height * scale));
-
+    function resizeCanvas(src, w, h) {
       var c2 = document.createElement("canvas");
-      c2.width = w; c2.height = h;
-      c2.getContext("2d").drawImage(canvas, 0, 0, w, h);
-
-      canvas = c2;
-      q = 0.75;
-
-      dataUrl = canvas.toDataURL("image/jpeg", q);
-      sizeKb = calcKB(dataUrl);
-
-      guard = 0;
-      while (sizeKb > TARGET_KB && q > minQ && guard < 12) {
-        guard++;
-        q = q - step;
-        if (q < minQ) q = minQ;
-        dataUrl = canvas.toDataURL("image/jpeg", q);
-        sizeKb = calcKB(dataUrl);
-        if (q === minQ) break;
-      }
+      c2.width = w;
+      c2.height = h;
+      var ctx = c2.getContext("2d");
+      try { ctx.imageSmoothingEnabled = true; } catch (e) {}
+      try { ctx.imageSmoothingQuality = "high"; } catch (e2) {}
+      ctx.drawImage(src, 0, 0, w, h);
+      return c2;
     }
 
-    return { dataUrl: dataUrl, sizeKb: sizeKb };
+    function bestQualityUnderTarget(c) {
+      var hi = Math.max(qLo, Math.min(0.98, qHi));
+      var lo = Math.max(0.05, Math.min(qLo, hi));
+
+      var rHi = encodeJpeg(c, hi);
+      if (rHi.sizeKb <= targetKb) return rHi;
+
+      var rLo = encodeJpeg(c, lo);
+      if (rLo.sizeKb > targetKb) return rLo;
+
+      var best = rLo;
+      var left = lo;
+      var right = hi;
+      for (var i = 0; i < 10; i++) {
+        var mid = (left + right) / 2;
+        var rMid = encodeJpeg(c, mid);
+        if (rMid.sizeKb <= targetKb) {
+          best = rMid;
+          left = mid;
+        } else {
+          right = mid;
+        }
+      }
+      return best;
+    }
+
+    var current = canvas;
+    var attempt = bestQualityUnderTarget(current);
+    var guard = 0;
+
+    while (attempt.sizeKb > targetKb && guard < 18) {
+      guard++;
+      var w0 = current.width || 0;
+      var h0 = current.height || 0;
+      var short = Math.min(w0, h0);
+      if (!short) break;
+
+      if (short > minShort) {
+        var scale = (guard <= 6) ? 0.90 : 0.85;
+        var scale2 = Math.max(0.1, Math.min(scale, (minShort / short)));
+        var w = Math.max(1, Math.round(w0 * scale2));
+        var h = Math.max(1, Math.round(h0 * scale2));
+        current = resizeCanvas(current, w, h);
+        attempt = bestQualityUnderTarget(current);
+        continue;
+      }
+
+      if (qLo > qLoFloor) {
+        qLo = Math.max(qLoFloor, qLo - 0.07);
+        attempt = bestQualityUnderTarget(current);
+        continue;
+      }
+
+      break;
+    }
+
+    return { dataUrl: attempt.dataUrl, sizeKb: attempt.sizeKb };
   }
 
   // =============================
@@ -1158,6 +1425,20 @@
     });
   }
 
+  function getPhotoPairs(ids, cb) {
+    ids = ids || [];
+    photoGetMany(ids, function (err, arr) {
+      if (err) return cb && cb(err);
+      var out = [];
+      for (var i = 0; i < ids.length; i++) {
+        var id = ids[i];
+        var url = arr && arr[i] ? arr[i] : "";
+        if (id && url) out.push({ id: id, url: url });
+      }
+      cb && cb(null, out);
+    });
+  }
+
   // =============================
   // PREVIEW STRIP
   // =============================
@@ -1256,10 +1537,19 @@
 
   function previewDraft(i) {
     var ids = [];
+    var selectedId = (capturedFiles[i] && capturedFiles[i].id) ? capturedFiles[i].id : "";
     for (var k = 0; k < capturedFiles.length; k++) ids.push(capturedFiles[k].id);
-    getPhotoUrls(ids, function (err, items) {
-      if (err || !items.length) return;
-      lbShow(items, i);
+    getPhotoPairs(ids, function (err, pairs) {
+      if (err || !pairs.length) return;
+      var items = [];
+      var idList = [];
+      for (var j = 0; j < pairs.length; j++) {
+        items.push(pairs[j].url);
+        idList.push(pairs[j].id);
+      }
+      var start = 0;
+      for (var x = 0; x < idList.length; x++) if (idList[x] === selectedId) { start = x; break; }
+      lbShow(items, start, { ids: idList, source: "draft", queueIndex: -1 });
     });
   }
 
@@ -1681,9 +1971,15 @@ mid.appendChild(topRow);
     var ids = (p && p.image_ids) ? p.image_ids.slice(0) : [];
     if (!ids.length) return;
 
-    getPhotoUrls(ids, function (err, items) {
-      if (err || !items.length) return;
-      lbShow(items, 0);
+    getPhotoPairs(ids, function (err, pairs) {
+      if (err || !pairs.length) return;
+      var items = [];
+      var idList = [];
+      for (var j = 0; j < pairs.length; j++) {
+        items.push(pairs[j].url);
+        idList.push(pairs[j].id);
+      }
+      lbShow(items, 0, { ids: idList, source: "queue", queueIndex: idx });
     });
   }
 
@@ -2376,7 +2672,7 @@ mid.appendChild(topRow);
 
   // Helper global untuk onclick string HTML
   window.openLightbox = function(id) {
-    lbShow(["https://lh3.googleusercontent.com/d/" + id + "=s0"], 0);
+    lbShow(["https://lh3.googleusercontent.com/d/" + id + "=s0"], 0, null);
   };
 
   function setSearchFilter(filter) {
@@ -2634,6 +2930,47 @@ mid.appendChild(topRow);
     on($("lb-close"), "click", lbClose);
     on($("lb-prev"), "click", lbPrev);
     on($("lb-next"), "click", lbNext);
+    on($("lb-draw-toggle"), "click", function () { if (!uiLocked && !lbDraw.active) lbEnterDrawMode(); });
+    on($("lb-draw-cancel"), "click", function () { lbExitDrawMode(); });
+    on($("lb-draw-save"), "click", function () { if (!uiLocked) lbDrawSave(); });
+    on($("lb-draw-undo"), "click", function () { lbDrawUndo(); });
+    on($("lb-draw-clear"), "click", function () { lbDrawClear(); });
+    on($("lb-color-red"), "click", function () { lbDraw.color = "#ef4444"; });
+    on($("lb-color-yellow"), "click", function () { lbDraw.color = "#f59e0b"; });
+    on($("lb-color-blue"), "click", function () { lbDraw.color = "#3b82f6"; });
+
+    var cv = $("lbCanvas");
+    if (cv) {
+      on(cv, "pointerdown", function (e) {
+        if (!lbDraw.active) return;
+        try { e.preventDefault(); } catch (x) {}
+        var pt = lbDrawPointFromEvent(e);
+        if (!pt) return;
+        lbDraw.drawing = true;
+        lbDraw.strokes.push({ color: lbDraw.color, width: lbDraw.width, pts: [pt] });
+        try { cv.setPointerCapture(e.pointerId); } catch (y) {}
+        lbRenderDraw();
+      });
+      on(cv, "pointermove", function (e) {
+        if (!lbDraw.active || !lbDraw.drawing) return;
+        try { e.preventDefault(); } catch (x2) {}
+        var pt = lbDrawPointFromEvent(e);
+        if (!pt) return;
+        var s = lbDraw.strokes[lbDraw.strokes.length - 1];
+        if (!s || !s.pts) return;
+        s.pts.push(pt);
+        lbRenderDraw();
+      });
+      on(cv, "pointerup", function (e) {
+        if (!lbDraw.active) return;
+        try { e.preventDefault(); } catch (x3) {}
+        lbDraw.drawing = false;
+      });
+      on(cv, "pointercancel", function () {
+        if (!lbDraw.active) return;
+        lbDraw.drawing = false;
+      });
+    }
 
     // optional toggle
     on($("btn-plus-meta"), "click", function (e) { try { e.preventDefault(); } catch (x) {} toggleOptional(); });

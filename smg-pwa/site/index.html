@@ -242,7 +242,7 @@
               <input
                 type="text"
                 id="inp-po"
-                class="w-full pl-3 pr-10 py-2.5 bg-slate-50 border border-slate-200
+                class="w-full pl-3 pr-10 py-3 bg-slate-50 border border-slate-200
                        rounded-lg text-sm font-mono focus:outline-none
                        focus:ring-2 focus:ring-blue-500 focus:bg-white"
                 placeholder="Scan/Ketik..."
@@ -772,6 +772,14 @@
     <div class="absolute inset-0" id="lb-backdrop"></div>
 
     <div class="relative h-full w-full flex items-center justify-center p-3">
+      <button id="lb-draw-toggle"
+        class="absolute top-3 left-3 z-[90] w-11 h-11 rounded-full
+               bg-white/10 hover:bg-white/20 text-white flex items-center
+               justify-center active:scale-95"
+        type="button">
+        <svg class="w-6 h-6"><use href="#ic-pen"></use></svg>
+      </button>
+
       <button id="lb-close"
         class="absolute top-3 right-3 z-[90] w-11 h-11 rounded-full
                bg-white/10 hover:bg-white/20 text-white flex items-center
@@ -796,14 +804,49 @@
         <svg class="w-6 h-6"><use href="#ic-right"></use></svg>
       </button>
 
-      <img id="lbImg"
-        class="max-h-[85vh] max-w-[92vw] rounded-xl shadow-2xl object-contain select-none"
-        alt="preview">
+      <div id="lbStage" class="relative inline-block">
+        <img id="lbImg"
+          class="block max-h-[85vh] max-w-[92vw] rounded-xl shadow-2xl object-contain select-none"
+          alt="preview">
+        <canvas id="lbCanvas"
+          class="hidden absolute inset-0 w-full h-full rounded-xl touch-none select-none"></canvas>
+      </div>
 
       <div id="lbCount"
         class="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1
                rounded-full bg-black/40 text-white text-xs font-semibold">
         1 / 1
+      </div>
+
+      <div id="lbDrawBar"
+        class="hidden absolute bottom-3 left-1/2 -translate-x-1/2 z-[95]
+               px-2 py-2 rounded-2xl bg-black/50 backdrop-blur-sm
+               flex items-center gap-2">
+        <button id="lb-color-red" type="button"
+          class="w-9 h-9 rounded-xl bg-red-500 border border-white/30 active:scale-95"></button>
+        <button id="lb-color-yellow" type="button"
+          class="w-9 h-9 rounded-xl bg-amber-400 border border-white/30 active:scale-95"></button>
+        <button id="lb-color-blue" type="button"
+          class="w-9 h-9 rounded-xl bg-blue-500 border border-white/30 active:scale-95"></button>
+
+        <div class="w-px h-7 bg-white/20 mx-1"></div>
+
+        <button id="lb-draw-undo" type="button"
+          class="px-3 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-extrabold active:scale-95">
+          Undo
+        </button>
+        <button id="lb-draw-clear" type="button"
+          class="px-3 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-extrabold active:scale-95">
+          Clear
+        </button>
+        <button id="lb-draw-cancel" type="button"
+          class="px-3 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-extrabold active:scale-95">
+          Batal
+        </button>
+        <button id="lb-draw-save" type="button"
+          class="px-3 h-9 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold active:scale-95">
+          Simpan
+        </button>
       </div>
     </div>
   </div>
@@ -876,12 +919,20 @@
 
   <!-- Netlify-injected config + App logic -->
   <script src="/config.js"></script>
-  <script src="/app.js"></script>
+  <script src="/app.js?v=20260203e"></script>
 
   <!-- SW register (kecil saja) -->
   <script>
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(function(){});
+      var h = (location && location.hostname) ? location.hostname : "";
+      var isLocal = (h === "localhost" || h === "127.0.0.1" || h === "::1");
+      if (isLocal) {
+        navigator.serviceWorker.getRegistrations()
+          .then(function (regs) { regs.forEach(function (r) { r.unregister(); }); })
+          .catch(function () {});
+      } else {
+        navigator.serviceWorker.register("/sw.js").catch(function () {});
+      }
     }
   </script>
 

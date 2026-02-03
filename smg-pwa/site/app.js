@@ -281,10 +281,10 @@
   var lbDraw = {
     active: false,
     baseImg: null,
-    strokes: [],
     drawing: false,
     color: "#ef4444",
-    width: 8
+    width: 8,
+    lastPt: null
   };
 
   function lbGetCurrentPhotoId() {
@@ -324,29 +324,6 @@
     } catch (e) {}
   }
 
-  function lbRenderDraw() {
-    var cv = $("lbCanvas");
-    if (!cv) return;
-    var ctx = cv.getContext("2d");
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, cv.width, cv.height);
-    if (lbDraw.baseImg) ctx.drawImage(lbDraw.baseImg, 0, 0, cv.width, cv.height);
-
-    for (var i = 0; i < lbDraw.strokes.length; i++) {
-      var s = lbDraw.strokes[i];
-      if (!s || !s.pts || s.pts.length < 2) continue;
-      ctx.strokeStyle = s.color || "#ef4444";
-      ctx.lineWidth = s.width || 8;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.beginPath();
-      ctx.moveTo(s.pts[0][0], s.pts[0][1]);
-      for (var j = 1; j < s.pts.length; j++) ctx.lineTo(s.pts[j][0], s.pts[j][1]);
-      ctx.stroke();
-    }
-  }
-
   function lbExitDrawMode() {
     var cv = $("lbCanvas");
     var bar = $("lbDrawBar");
@@ -354,8 +331,8 @@
     if (bar) bar.classList.add("hidden");
     lbDraw.active = false;
     lbDraw.baseImg = null;
-    lbDraw.strokes = [];
     lbDraw.drawing = false;
+    lbDraw.lastPt = null;
     lbSetNavDisabled(false);
   }
 
@@ -374,10 +351,10 @@
 
       lbDraw.active = true;
       lbDraw.baseImg = img;
-      lbDraw.strokes = [];
       lbDraw.drawing = false;
       lbDraw.color = "#ef4444";
       lbDraw.width = 8;
+      lbDraw.lastPt = null;
 
       cv.width = img.naturalWidth || img.width || 1;
       cv.height = img.naturalHeight || img.height || 1;
@@ -386,7 +363,13 @@
       bar.classList.remove("hidden");
       lbSetNavDisabled(true);
       lbSyncCanvasCssToImage();
-      lbRenderDraw();
+      var ctx = cv.getContext("2d");
+      if (ctx) {
+        try { ctx.imageSmoothingEnabled = true; } catch (e) {}
+        try { ctx.imageSmoothingQuality = "high"; } catch (e2) {}
+        ctx.clearRect(0, 0, cv.width, cv.height);
+        ctx.drawImage(img, 0, 0, cv.width, cv.height);
+      }
     };
     img.onerror = function () {
       showToast("error", "Gagal memuat gambar untuk dicoret.");
@@ -401,19 +384,6 @@
     var x = (e.clientX - r.left) * (cv.width / Math.max(1, r.width));
     var y = (e.clientY - r.top) * (cv.height / Math.max(1, r.height));
     return [x, y];
-  }
-
-  function lbDrawUndo() {
-    if (!lbDraw.active) return;
-    if (!lbDraw.strokes.length) return;
-    lbDraw.strokes.pop();
-    lbRenderDraw();
-  }
-
-  function lbDrawClear() {
-    if (!lbDraw.active) return;
-    lbDraw.strokes = [];
-    lbRenderDraw();
   }
 
   function recalcQueueTotalKb(p) {
@@ -1297,7 +1267,8 @@
 
       if (short > minShort) {
         var scale = (guard <= 6) ? 0.90 : 0.85;
-        var scale2 = Math.max(0.1, Math.min(scale, (minShort / short)));
+        var nextShort = Math.max(minShort, Math.round(short * scale));
+        var scale2 = nextShort / short;
         var w = Math.max(1, Math.round(w0 * scale2));
         var h = Math.max(1, Math.round(h0 * scale2));
         current = resizeCanvas(current, w, h);
@@ -2933,8 +2904,6 @@ mid.appendChild(topRow);
     on($("lb-draw-toggle"), "click", function () { if (!uiLocked && !lbDraw.active) lbEnterDrawMode(); });
     on($("lb-draw-cancel"), "click", function () { lbExitDrawMode(); });
     on($("lb-draw-save"), "click", function () { if (!uiLocked) lbDrawSave(); });
-    on($("lb-draw-undo"), "click", function () { lbDrawUndo(); });
-    on($("lb-draw-clear"), "click", function () { lbDrawClear(); });
     on($("lb-color-red"), "click", function () { lbDraw.color = "#ef4444"; });
     on($("lb-color-yellow"), "click", function () { lbDraw.color = "#f59e0b"; });
     on($("lb-color-blue"), "click", function () { lbDraw.color = "#3b82f6"; });
@@ -2947,28 +2916,45 @@ mid.appendChild(topRow);
         var pt = lbDrawPointFromEvent(e);
         if (!pt) return;
         lbDraw.drawing = true;
-        lbDraw.strokes.push({ color: lbDraw.color, width: lbDraw.width, pts: [pt] });
+        lbDraw.lastPt = pt;
+        var ctx = cv.getContext("2d");
+        if (ctx) {
+          ctx.strokeStyle = lbDraw.color || "#ef4444";
+          ctx.lineWidth = lbDraw.width || 8;
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.beginPath();
+          ctx.moveTo(pt[0], pt[1]);
+        }
         try { cv.setPointerCapture(e.pointerId); } catch (y) {}
-        lbRenderDraw();
       });
       on(cv, "pointermove", function (e) {
         if (!lbDraw.active || !lbDraw.drawing) return;
         try { e.preventDefault(); } catch (x2) {}
         var pt = lbDrawPointFromEvent(e);
         if (!pt) return;
-        var s = lbDraw.strokes[lbDraw.strokes.length - 1];
-        if (!s || !s.pts) return;
-        s.pts.push(pt);
-        lbRenderDraw();
+        var ctx = cv.getContext("2d");
+        if (!ctx) return;
+        if (!lbDraw.lastPt) {
+          lbDraw.lastPt = pt;
+          ctx.beginPath();
+          ctx.moveTo(pt[0], pt[1]);
+          return;
+        }
+        ctx.lineTo(pt[0], pt[1]);
+        ctx.stroke();
+        lbDraw.lastPt = pt;
       });
       on(cv, "pointerup", function (e) {
         if (!lbDraw.active) return;
         try { e.preventDefault(); } catch (x3) {}
         lbDraw.drawing = false;
+        lbDraw.lastPt = null;
       });
       on(cv, "pointercancel", function () {
         if (!lbDraw.active) return;
         lbDraw.drawing = false;
+        lbDraw.lastPt = null;
       });
     }
 

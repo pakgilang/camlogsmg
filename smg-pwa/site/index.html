@@ -804,9 +804,9 @@
         <svg class="w-6 h-6"><use href="#ic-right"></use></svg>
       </button>
 
-      <div id="lbStage" class="relative inline-block">
+      <div id="lbStage" class="relative w-[100vw] max-w-[100vw]">
         <img id="lbImg"
-          class="block max-h-[85vh] max-w-[92vw] rounded-xl shadow-2xl object-contain select-none"
+          class="block w-[100vw] max-w-[100vw] max-h-[85vh] rounded-xl shadow-2xl object-contain select-none"
           alt="preview">
         <canvas id="lbCanvas"
           class="hidden absolute inset-0 w-full h-full rounded-xl touch-none select-none"></canvas>
@@ -831,14 +831,6 @@
 
         <div class="w-px h-7 bg-white/20 mx-1"></div>
 
-        <button id="lb-draw-undo" type="button"
-          class="px-3 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-extrabold active:scale-95">
-          Undo
-        </button>
-        <button id="lb-draw-clear" type="button"
-          class="px-3 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-extrabold active:scale-95">
-          Clear
-        </button>
         <button id="lb-draw-cancel" type="button"
           class="px-3 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-extrabold active:scale-95">
           Batal
@@ -919,7 +911,7 @@
 
   <!-- Netlify-injected config + App logic -->
   <script src="/config.js"></script>
-  <script src="/app.js?v=20260203e"></script>
+  <script src="/app.js?v=20260203f"></script>
 
   <!-- SW register (kecil saja) -->
   <script>

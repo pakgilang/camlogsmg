@@ -1,12 +1,13 @@
 /* sw.js — SMG PWA (lightweight) */
 
-const CACHE = "smg-pwa-v7.0.1";
+const CACHE = "smg-pwa-v7.0.2";
 
 // Static assets yang aman dicache
 const ASSETS = [
   "/",
   "/index.html",
   "/app.js",
+  "/compress_worker.js",
   "/config.js",
   "/manifest.webmanifest",
   "/icons/icon16.png",

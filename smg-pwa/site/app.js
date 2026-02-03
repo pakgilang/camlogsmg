@@ -333,6 +333,7 @@
     lbDraw.baseImg = null;
     lbDraw.drawing = false;
     lbDraw.lastPt = null;
+    lbDraw.saving = false;
     lbSetNavDisabled(false);
   }
 
@@ -355,6 +356,7 @@
       lbDraw.color = "#ef4444";
       lbDraw.width = 8;
       lbDraw.lastPt = null;
+      lbDraw.saving = false;
 
       cv.width = img.naturalWidth || img.width || 1;
       cv.height = img.naturalHeight || img.height || 1;
@@ -431,18 +433,28 @@
     var photoId = lbGetCurrentPhotoId();
     var cv = $("lbCanvas");
     if (!photoId || !cv) return;
+    if (lbDraw.saving) return;
+    lbDraw.saving = true;
+    showToast("info", "Memproses gambar...");
 
-    var packed = smartCompress(cv);
-    var dataUrl = packed.dataUrl || "";
-    var sizeKb = packed.sizeKb || 0;
+    compressCanvasAsync(cv, function (err, packed) {
+      lbDraw.saving = false;
+      if (err || !packed || !packed.dataUrl) {
+        showToast("error", "Gagal kompres gambar.");
+        return;
+      }
 
-    lbItems[lbIndex] = dataUrl;
-    lbExitDrawMode();
-    lbRender();
+      var dataUrl = packed.dataUrl || "";
+      var sizeKb = packed.sizeKb || 0;
 
-    photoPut(photoId, dataUrl, function () {
-      lbApplySavedPhoto(photoId, dataUrl, sizeKb);
-      showToast("success", "Coretan tersimpan (" + sizeKb + " KB).");
+      lbItems[lbIndex] = dataUrl;
+      lbExitDrawMode();
+      lbRender();
+
+      photoPut(photoId, dataUrl, function () {
+        lbApplySavedPhoto(photoId, dataUrl, sizeKb);
+        showToast("success", "Coretan tersimpan (" + sizeKb + " KB).");
+      });
     });
   }
 
@@ -522,6 +534,7 @@
   function lbKeydown(e) {
     var k = e && e.key ? e.key : "";
     if (k === "Escape") {
+      if (lbDraw.saving) return;
       if (lbDraw.active) lbExitDrawMode();
       else lbClose();
     }
@@ -531,6 +544,7 @@
 
   window.addEventListener("popstate", function () {
     if (lbOpenFlag) {
+      if (lbDraw.saving) return;
       lbClosingViaBack = true;
       lbClose();
     }
@@ -558,6 +572,70 @@
   var TARGET_KB = 60;
   var processingCount = 0;
   var uiLocked = false;
+  var compressWorker = null;
+  var compressJobSeq = 0;
+  var compressJobs = {};
+
+  function getCompressWorker() {
+    if (compressWorker === null) {
+      try {
+        compressWorker = new Worker("/compress_worker.js");
+        compressWorker.onmessage = function (ev) {
+          var msg = ev && ev.data ? ev.data : null;
+          if (!msg || msg.type !== "done") return;
+          var cb = compressJobs[msg.id];
+          delete compressJobs[msg.id];
+          if (typeof cb !== "function") return;
+          if (msg.ok) cb(null, { dataUrl: msg.dataUrl, sizeKb: msg.sizeKb });
+          else cb(new Error(msg.error || "compress_failed"));
+        };
+        compressWorker.onerror = function () {
+          try { compressWorker.terminate(); } catch (e) {}
+          compressWorker = false;
+        };
+      } catch (e2) {
+        compressWorker = false;
+      }
+    }
+    return compressWorker || null;
+  }
+
+  function compressBitmapAsync(bitmap, cb) {
+    var w = getCompressWorker();
+    if (!w || !bitmap) return cb(new Error("no_worker"));
+    var id = ++compressJobSeq;
+    compressJobs[id] = cb;
+    try {
+      w.postMessage(
+        { type: "compress", id: id, bitmap: bitmap, maxWidth: MAX_WIDTH, targetKb: TARGET_KB, qualityStart: JPEG_QUALITY_START },
+        [bitmap]
+      );
+    } catch (err) {
+      delete compressJobs[id];
+      cb(err);
+    }
+  }
+
+  function compressCanvasAsync(canvas, cb) {
+    var w = getCompressWorker();
+    if (!w || !window.createImageBitmap) {
+      try { return cb(null, smartCompress(canvas)); } catch (e) { return cb(e); }
+    }
+    try {
+      createImageBitmap(canvas).then(function (bitmap) {
+        compressBitmapAsync(bitmap, function (err, packed) {
+          if (err) {
+            try { return cb(null, smartCompress(canvas)); } catch (e2) { return cb(e2); }
+          }
+          cb(null, packed);
+        });
+      }).catch(function () {
+        try { return cb(null, smartCompress(canvas)); } catch (e3) { return cb(e3); }
+      });
+    } catch (e4) {
+      try { return cb(null, smartCompress(canvas)); } catch (e5) { return cb(e5); }
+    }
+  }
 
   // Upload opt-in
   var uploadArmed = false;
@@ -1210,7 +1288,9 @@
     var qHi = JPEG_QUALITY_START || 0.9;
     var qLo = 0.25;
     var qLoFloor = 0.05;
-    var minShort = 64;
+    var minShorts = [240, 160, 120];
+    var stage = 0;
+    var minShort = minShorts[0];
 
     function encodeJpeg(c, q) {
       var dataUrl = c.toDataURL("image/jpeg", q);
@@ -1258,7 +1338,7 @@
     var attempt = bestQualityUnderTarget(current);
     var guard = 0;
 
-    while (attempt.sizeKb > targetKb && guard < 18) {
+    while (attempt.sizeKb > targetKb && guard < 22) {
       guard++;
       var w0 = current.width || 0;
       var h0 = current.height || 0;
@@ -1266,7 +1346,7 @@
       if (!short) break;
 
       if (short > minShort) {
-        var scale = (guard <= 6) ? 0.90 : 0.85;
+        var scale = (guard <= 8) ? 0.92 : 0.88;
         var nextShort = Math.max(minShort, Math.round(short * scale));
         var scale2 = nextShort / short;
         var w = Math.max(1, Math.round(w0 * scale2));
@@ -1278,6 +1358,15 @@
 
       if (qLo > qLoFloor) {
         qLo = Math.max(qLoFloor, qLo - 0.07);
+        attempt = bestQualityUnderTarget(current);
+        continue;
+      }
+
+      if (stage < minShorts.length - 1) {
+        stage++;
+        minShort = minShorts[stage];
+        qLo = 0.25;
+        qLoFloor = (stage === 1) ? 0.08 : 0.05;
         attempt = bestQualityUnderTarget(current);
         continue;
       }
@@ -1332,33 +1421,68 @@
   }
 
   function processImage(file, jenis) {
-    var reader = new FileReader();
-    reader.onload = function (event) {
-      var img = new Image();
-      img.onload = function () {
-        var canvas = document.createElement("canvas");
-        var w = img.width, h = img.height;
-        if (w > MAX_WIDTH) {
-          h = Math.round(h * (MAX_WIDTH / w));
-          w = MAX_WIDTH;
-        }
-        canvas.width = w;
-        canvas.height = h;
-        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+    var id = makePhotoId();
+    var tipe = (jenis || "MATERIAL");
 
-        var packed = smartCompress(canvas);
-        var id = makePhotoId();
+    function done(err, packed) {
+      if (err || !packed || !packed.dataUrl) {
+        processingCount = Math.max(0, processingCount - 1);
+        updatePreviewUI();
+        showToast("error", "Gagal proses gambar.");
+        return;
+      }
+      photoPut(id, packed.dataUrl, function () {
+        capturedFiles.push({ id: id, dataUrl: packed.dataUrl, sizeKb: packed.sizeKb, jenis: tipe });
+        processingCount = Math.max(0, processingCount - 1);
+        updatePreviewUI();
+        saveStateDebounced();
+      });
+    }
 
-        photoPut(id, packed.dataUrl, function () {
-          capturedFiles.push({ id: id, dataUrl: packed.dataUrl, sizeKb: packed.sizeKb, jenis: (jenis || "MATERIAL") });
-          processingCount = Math.max(0, processingCount - 1);
-          updatePreviewUI();
-          saveStateDebounced();
+    var w = getCompressWorker();
+    if (w && window.createImageBitmap) {
+      try {
+        createImageBitmap(file).then(function (bitmap) {
+          compressBitmapAsync(bitmap, function (err, packed) {
+            if (!err && packed) return done(null, packed);
+            fallbackMainThread();
+          });
+        }).catch(function () {
+          fallbackMainThread();
         });
+        return;
+      } catch (e0) {}
+    }
+
+    fallbackMainThread();
+
+    function fallbackMainThread() {
+      var reader = new FileReader();
+      reader.onload = function (event) {
+        var img = new Image();
+        img.onload = function () {
+          var canvas = document.createElement("canvas");
+          var w2 = img.width, h2 = img.height;
+          if (w2 > MAX_WIDTH) {
+            h2 = Math.round(h2 * (MAX_WIDTH / w2));
+            w2 = MAX_WIDTH;
+          }
+          canvas.width = w2;
+          canvas.height = h2;
+          canvas.getContext("2d").drawImage(img, 0, 0, w2, h2);
+          try {
+            var packed2 = smartCompress(canvas);
+            done(null, packed2);
+          } catch (e1) {
+            done(e1);
+          }
+        };
+        img.onerror = function () { done(new Error("img_error")); };
+        img.src = event.target.result;
       };
-      img.src = event.target.result;
-    };
-    reader.readAsDataURL(file);
+      reader.onerror = function () { done(new Error("read_error")); };
+      reader.readAsDataURL(file);
+    }
   }
 
   function handleFileSelect(e) {
@@ -2897,12 +3021,12 @@ mid.appendChild(topRow);
     on($("toastClose"), "click", hideToast);
 
     // lightbox controls
-    on($("lb-backdrop"), "click", lbClose);
-    on($("lb-close"), "click", lbClose);
+    on($("lb-backdrop"), "click", function () { if (!lbDraw.saving) lbClose(); });
+    on($("lb-close"), "click", function () { if (!lbDraw.saving) lbClose(); });
     on($("lb-prev"), "click", lbPrev);
     on($("lb-next"), "click", lbNext);
     on($("lb-draw-toggle"), "click", function () { if (!uiLocked && !lbDraw.active) lbEnterDrawMode(); });
-    on($("lb-draw-cancel"), "click", function () { lbExitDrawMode(); });
+    on($("lb-draw-cancel"), "click", function () { if (!lbDraw.saving) lbExitDrawMode(); });
     on($("lb-draw-save"), "click", function () { if (!uiLocked) lbDrawSave(); });
     on($("lb-color-red"), "click", function () { lbDraw.color = "#ef4444"; });
     on($("lb-color-yellow"), "click", function () { lbDraw.color = "#f59e0b"; });

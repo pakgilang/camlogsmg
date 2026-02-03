@@ -202,7 +202,7 @@
 
           <div class="leading-tight">
             <h1 class="font-bold text-base tracking-wide">Logistik SMG</h1>
-            <p class="text-[10px] text-blue-200 font-mono opacity-90">
+            <p id="diag-trigger" class="text-[10px] text-blue-200 font-mono opacity-90">
               Mode : Edit Gambar
             </p>
           </div>
@@ -468,7 +468,7 @@
                 <svg class="w-3.5 h-3.5 animate-spin">
                   <use href="#ic-spin"></use>
                 </svg>
-                <span>Mengompres...</span>
+                <span id="processing-msg">Mengompres...</span>
               </span>
             </div>
           </div>
@@ -831,6 +831,11 @@
 
         <div class="w-px h-7 bg-white/20 mx-1"></div>
 
+        <span id="lbSaving"
+          class="hidden text-[10px] text-white/90 font-extrabold px-2">
+          Menyimpan...
+        </span>
+
         <button id="lb-draw-cancel" type="button"
           class="px-3 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-extrabold active:scale-95">
           Batal
@@ -911,6 +916,10 @@
 
   <!-- Netlify-injected config + App logic -->
   <script src="/config.js"></script>
+  <script src="/smg_diag.js"></script>
+  <script src="/smg_storage.js"></script>
+  <script src="/smg_compress.js"></script>
+  <script src="/smg_lightbox.js"></script>
   <script src="/app.js"></script>
 
   <!-- SW register (kecil saja) -->

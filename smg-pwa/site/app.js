@@ -167,6 +167,60 @@
     return escapeHtml(String(s || "").replace(/\r?\n/g, " "));
   }
 
+  function openDiagPanel() {
+    var D = window.SMGDiag || null;
+    var logs = [];
+    try { logs = D && D.get ? D.get() : []; } catch (e) { logs = []; }
+    var tail = logs.slice(Math.max(0, logs.length - 60));
+
+    var summary = {
+      time: (function () { try { return new Date().toISOString(); } catch (e0) { return String(Date.now()); } })(),
+      online: (function () { try { return !!navigator.onLine; } catch (e1) { return false; } })(),
+      processingCount: processingCount || 0,
+      capturedCount: capturedFiles ? capturedFiles.length : 0,
+      queueCount: poQueue ? poQueue.length : 0,
+      swCache: (function () { try { return (window.__SW_CACHE__ || ""); } catch (e2) { return ""; } })()
+    };
+
+    var txt = "";
+    for (var i = 0; i < tail.length; i++) {
+      try { txt += JSON.stringify(tail[i]) + "\n"; } catch (e3) {}
+    }
+    if (!txt) txt = "(log kosong)";
+
+    var html = '' +
+      '<div class="space-y-3">' +
+      '  <div class="text-[11px] text-slate-600">' +
+      '    <div><b>Online</b>: ' + (summary.online ? "YA" : "TIDAK") + '</div>' +
+      '    <div><b>Foto draft</b>: ' + summary.capturedCount + ' | <b>Queue</b>: ' + summary.queueCount + ' | <b>Proses</b>: ' + summary.processingCount + '</div>' +
+      '  </div>' +
+      '  <div class="flex gap-2">' +
+      '    <button id="diag-copy" type="button" class="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold active:scale-95">Copy Log</button>' +
+      '    <button id="diag-clear" type="button" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-extrabold active:scale-95">Clear</button>' +
+      '  </div>' +
+      '  <pre class="text-[10px] leading-relaxed bg-slate-50 border border-slate-200 rounded-xl p-2 max-h-64 overflow-auto whitespace-pre-wrap">' + escapeHtml(txt) + '</pre>' +
+      '</div>';
+
+    ovShow({ mode: "alert", icon: "info", title: "Diagnostik", sub: "Log ringkas (60 terakhir)", bodyHtml: html, okText: "Tutup", allowClose: true });
+
+    setTimeout(function () {
+      var bCopy = $("diag-copy");
+      var bClear = $("diag-clear");
+      on(bCopy, "click", function () {
+        if (!D || !D.copy) { showToast("warning", "Diag belum siap."); return; }
+        D.copy({ summary: summary }, function (err) {
+          if (err) showToast("error", "Gagal copy log.");
+          else showToast("success", "Log tersalin.");
+        });
+      });
+      on(bClear, "click", function () {
+        if (D && D.clear) D.clear();
+        showToast("success", "Log dibersihkan.");
+        ovClose(true);
+      });
+    }, 0);
+  }
+
   function ovShow(opts) {
     opts = opts || {};
     var ov = $("ov");
@@ -268,292 +322,11 @@
     ovShow({ mode: "progress", icon: "info", title: title || "Proses", sub: sub || "", bodyHtml: html || "", allowClose: false });
   }
 
-  // =============================
-  // LIGHTBOX
-  // =============================
-  var LB_STATE_KEY = "__lb";
-  var lbOpenFlag = false;
-  var lbItems = [];
-  var lbIndex = 0;
-  var lbPushed = false;
-  var lbClosingViaBack = false;
-  var lbMeta = { ids: null, source: "", queueIndex: -1 };
-  var lbDraw = {
-    active: false,
-    baseImg: null,
-    drawing: false,
-    color: "#ef4444",
-    width: 8,
-    lastPt: null
-  };
-
-  function lbGetCurrentPhotoId() {
-    try {
-      return (lbMeta && lbMeta.ids && lbMeta.ids[lbIndex]) ? String(lbMeta.ids[lbIndex]) : "";
-    } catch (e) {
-      return "";
-    }
-  }
-
-  function lbCanAnnotate() {
-    var id = lbGetCurrentPhotoId();
-    var src = lbItems && lbItems[lbIndex] ? String(lbItems[lbIndex]) : "";
-    return !!(id && src && src.indexOf("data:image") === 0);
-  }
-
-  function lbSetNavDisabled(disabled) {
-    var prev = $("lb-prev");
-    var next = $("lb-next");
-    var toggle = $("lb-draw-toggle");
-    try {
-      if (prev) prev.disabled = !!disabled;
-      if (next) next.disabled = !!disabled;
-      if (toggle) toggle.disabled = !!disabled;
-    } catch (e) {}
-  }
-
-  function lbSyncCanvasCssToImage() {
-    try {
-      var imgEl = $("lbImg");
-      var cv = $("lbCanvas");
-      if (!imgEl || !cv) return;
-      var r = imgEl.getBoundingClientRect();
-      if (!r || !r.width || !r.height) return;
-      cv.style.width = r.width + "px";
-      cv.style.height = r.height + "px";
-    } catch (e) {}
-  }
-
-  function lbExitDrawMode() {
-    var cv = $("lbCanvas");
-    var bar = $("lbDrawBar");
-    if (cv) cv.classList.add("hidden");
-    if (bar) bar.classList.add("hidden");
-    lbDraw.active = false;
-    lbDraw.baseImg = null;
-    lbDraw.drawing = false;
-    lbDraw.lastPt = null;
-    lbDraw.saving = false;
-    lbSetNavDisabled(false);
-  }
-
-  function lbEnterDrawMode() {
-    if (!lbCanAnnotate()) {
-      showToast("warning", "Coret hanya untuk foto draft (sebelum upload).");
-      return;
-    }
-
-    var src = String(lbItems[lbIndex] || "");
-    var img = new Image();
-    img.onload = function () {
-      var cv = $("lbCanvas");
-      var bar = $("lbDrawBar");
-      if (!cv || !bar) return;
-
-      lbDraw.active = true;
-      lbDraw.baseImg = img;
-      lbDraw.drawing = false;
-      lbDraw.color = "#ef4444";
-      lbDraw.width = 8;
-      lbDraw.lastPt = null;
-      lbDraw.saving = false;
-
-      cv.width = img.naturalWidth || img.width || 1;
-      cv.height = img.naturalHeight || img.height || 1;
-
-      cv.classList.remove("hidden");
-      bar.classList.remove("hidden");
-      lbSetNavDisabled(true);
-      lbSyncCanvasCssToImage();
-      var ctx = cv.getContext("2d");
-      if (ctx) {
-        try { ctx.imageSmoothingEnabled = true; } catch (e) {}
-        try { ctx.imageSmoothingQuality = "high"; } catch (e2) {}
-        ctx.clearRect(0, 0, cv.width, cv.height);
-        ctx.drawImage(img, 0, 0, cv.width, cv.height);
-      }
-    };
-    img.onerror = function () {
-      showToast("error", "Gagal memuat gambar untuk dicoret.");
-    };
-    img.src = src;
-  }
-
-  function lbDrawPointFromEvent(e) {
-    var cv = $("lbCanvas");
-    if (!cv) return null;
-    var r = cv.getBoundingClientRect();
-    var x = (e.clientX - r.left) * (cv.width / Math.max(1, r.width));
-    var y = (e.clientY - r.top) * (cv.height / Math.max(1, r.height));
-    return [x, y];
-  }
-
-  function recalcQueueTotalKb(p) {
-    if (!p) return 0;
-    var total = 0;
-    var sizes = p.sizes || [];
-    for (var i = 0; i < sizes.length; i++) total += (sizes[i] || 0);
-    p.total_kb = total;
-    return total;
-  }
-
-  function lbApplySavedPhoto(photoId, dataUrl, sizeKb) {
-    if (!photoId) return;
-
-    for (var i = 0; i < capturedFiles.length; i++) {
-      if (capturedFiles[i] && capturedFiles[i].id === photoId) {
-        capturedFiles[i].dataUrl = dataUrl || "";
-        capturedFiles[i].sizeKb = sizeKb || 0;
-      }
-    }
-
-    if (lbMeta && lbMeta.source === "queue" && lbMeta.queueIndex >= 0 && poQueue[lbMeta.queueIndex]) {
-      var p = poQueue[lbMeta.queueIndex];
-      var ids = p.image_ids || [];
-      var sizes = p.sizes || [];
-      for (var j = 0; j < ids.length; j++) {
-        if (ids[j] === photoId) {
-          sizes[j] = sizeKb || 0;
-          break;
-        }
-      }
-      p.sizes = sizes;
-      recalcQueueTotalKb(p);
-      renderPOList();
-      refreshStats();
-      persistSnapshotNow();
-    }
-
-    updatePreviewUI();
-    saveStateDebounced();
-  }
-
-  function lbDrawSave() {
-    if (!lbDraw.active) return;
-    var photoId = lbGetCurrentPhotoId();
-    var cv = $("lbCanvas");
-    if (!photoId || !cv) return;
-    if (lbDraw.saving) return;
-    lbDraw.saving = true;
-    showToast("info", "Memproses gambar...");
-
-    compressCanvasAsync(cv, function (err, packed) {
-      lbDraw.saving = false;
-      if (err || !packed || !packed.dataUrl) {
-        showToast("error", "Gagal kompres gambar.");
-        return;
-      }
-
-      var dataUrl = packed.dataUrl || "";
-      var sizeKb = packed.sizeKb || 0;
-
-      lbItems[lbIndex] = dataUrl;
-      lbExitDrawMode();
-      lbRender();
-
-      photoPut(photoId, dataUrl, function () {
-        lbApplySavedPhoto(photoId, dataUrl, sizeKb);
-        showToast("success", "Coretan tersimpan (" + sizeKb + " KB).");
-      });
-    });
-  }
-
-  function lbRender() {
-    var img = $("lbImg");
-    var cnt = $("lbCount");
-    if (!img) return;
-    img.src = lbItems[lbIndex] || "";
-    if (cnt) cnt.innerText = (lbIndex + 1) + " / " + (lbItems.length || 1);
-    setTimeout(lbSyncCanvasCssToImage, 0);
-
-    var toggle = $("lb-draw-toggle");
-    if (toggle) {
-      if (lbCanAnnotate()) toggle.classList.remove("hidden");
-      else toggle.classList.add("hidden");
-    }
-  }
-
-  function lbShow(items, startIndex, meta) {
-    if (!items || !items.length) return;
-    lbExitDrawMode();
-    lbItems = items;
-    lbIndex = Math.max(0, Math.min(items.length - 1, startIndex || 0));
-    lbMeta = meta || { ids: null, source: "", queueIndex: -1 };
-
-    var el = $("lb");
-    if (!el) return;
-
-    lbOpenFlag = true;
-    el.classList.remove("hidden");
-
-    if (!lbPushed) {
-      try {
-        var st = {}; st[LB_STATE_KEY] = 1;
-        history.pushState(st, "", location.href);
-        lbPushed = true;
-      } catch (e) {}
-    }
-
-    lbRender();
-    document.addEventListener("keydown", lbKeydown);
-  }
-
-  function lbClose() {
-    var el = $("lb");
-    if (el) el.classList.add("hidden");
-
-    lbExitDrawMode();
-    lbOpenFlag = false;
-    lbItems = [];
-    lbIndex = 0;
-    lbMeta = { ids: null, source: "", queueIndex: -1 };
-    document.removeEventListener("keydown", lbKeydown);
-
-    if (lbPushed && !lbClosingViaBack) {
-      lbPushed = false;
-      try { history.back(); } catch (e) {}
-    }
-    if (lbClosingViaBack) lbPushed = false;
-    lbClosingViaBack = false;
-  }
-
-  function lbPrev() {
-    if (!lbItems.length) return;
-    if (lbDraw.active) return;
-    lbIndex = (lbIndex - 1 + lbItems.length) % lbItems.length;
-    lbRender();
-  }
-
-  function lbNext() {
-    if (!lbItems.length) return;
-    if (lbDraw.active) return;
-    lbIndex = (lbIndex + 1) % lbItems.length;
-    lbRender();
-  }
-
-  function lbKeydown(e) {
-    var k = e && e.key ? e.key : "";
-    if (k === "Escape") {
-      if (lbDraw.saving) return;
-      if (lbDraw.active) lbExitDrawMode();
-      else lbClose();
-    }
-    if (k === "ArrowLeft") lbPrev();
-    if (k === "ArrowRight") lbNext();
-  }
-
-  window.addEventListener("popstate", function () {
-    if (lbOpenFlag) {
-      if (lbDraw.saving) return;
-      lbClosingViaBack = true;
-      lbClose();
-    }
-  });
-
-  window.addEventListener("resize", function () {
-    if (!lbOpenFlag) return;
-    lbSyncCanvasCssToImage();
-  });
+  var LB = window.SMGLightbox || null;
+  function lbShow(items, startIndex, meta) { try { if (LB && LB.show) LB.show(items, startIndex, meta); } catch (e) {} }
+  function lbClose() { try { if (LB && LB.close) LB.close(); } catch (e) {} }
+  function lbPrev() { try { if (LB && LB.prev) LB.prev(); } catch (e) {} }
+  function lbNext() { try { if (LB && LB.next) LB.next(); } catch (e) {} }
 
   // =============================
   // STATE + SETTINGS
@@ -572,70 +345,11 @@
   var TARGET_KB = 60;
   var processingCount = 0;
   var uiLocked = false;
-  var compressWorker = null;
-  var compressJobSeq = 0;
-  var compressJobs = {};
-
-  function getCompressWorker() {
-    if (compressWorker === null) {
-      try {
-        compressWorker = new Worker("/compress_worker.js");
-        compressWorker.onmessage = function (ev) {
-          var msg = ev && ev.data ? ev.data : null;
-          if (!msg || msg.type !== "done") return;
-          var cb = compressJobs[msg.id];
-          delete compressJobs[msg.id];
-          if (typeof cb !== "function") return;
-          if (msg.ok) cb(null, { dataUrl: msg.dataUrl, sizeKb: msg.sizeKb });
-          else cb(new Error(msg.error || "compress_failed"));
-        };
-        compressWorker.onerror = function () {
-          try { compressWorker.terminate(); } catch (e) {}
-          compressWorker = false;
-        };
-      } catch (e2) {
-        compressWorker = false;
-      }
-    }
-    return compressWorker || null;
-  }
-
-  function compressBitmapAsync(bitmap, cb) {
-    var w = getCompressWorker();
-    if (!w || !bitmap) return cb(new Error("no_worker"));
-    var id = ++compressJobSeq;
-    compressJobs[id] = cb;
-    try {
-      w.postMessage(
-        { type: "compress", id: id, bitmap: bitmap, maxWidth: MAX_WIDTH, targetKb: TARGET_KB, qualityStart: JPEG_QUALITY_START },
-        [bitmap]
-      );
-    } catch (err) {
-      delete compressJobs[id];
-      cb(err);
-    }
-  }
-
-  function compressCanvasAsync(canvas, cb) {
-    var w = getCompressWorker();
-    if (!w || !window.createImageBitmap) {
-      try { return cb(null, smartCompress(canvas)); } catch (e) { return cb(e); }
-    }
-    try {
-      createImageBitmap(canvas).then(function (bitmap) {
-        compressBitmapAsync(bitmap, function (err, packed) {
-          if (err) {
-            try { return cb(null, smartCompress(canvas)); } catch (e2) { return cb(e2); }
-          }
-          cb(null, packed);
-        });
-      }).catch(function () {
-        try { return cb(null, smartCompress(canvas)); } catch (e3) { return cb(e3); }
-      });
-    } catch (e4) {
-      try { return cb(null, smartCompress(canvas)); } catch (e5) { return cb(e5); }
-    }
-  }
+  var COMP = window.SMGCompress || {};
+  try { if (COMP.setConfig) COMP.setConfig({ maxWidth: MAX_WIDTH, qualityStart: JPEG_QUALITY_START, targetKb: TARGET_KB, diag: window.SMGDiag || null }); } catch (e0) {}
+  function smartCompress(canvas) { return (COMP.smartCompress ? COMP.smartCompress(canvas) : { dataUrl: canvas.toDataURL("image/jpeg", 0.85), sizeKb: 0 }); }
+  function compressCanvasAsync(canvas, cb) { return (COMP.compressCanvasAsync ? COMP.compressCanvasAsync(canvas, cb) : cb(new Error("no_compressor"))); }
+  function compressFileAsync(file, cb) { return (COMP.compressFileAsync ? COMP.compressFileAsync(file, cb) : cb(new Error("no_compressor"))); }
 
   // Upload opt-in
   var uploadArmed = false;
@@ -730,140 +444,17 @@
   // =============================
   // IndexedDB Persistence (kv + photos)
   // =============================
-  var DB_NAME = "CAMLOG_PWA";
-  var DB_VERSION = 2;
-  var DB_STORE = "kv";
-  var DB_PHOTOS = "photos";
-
   var SAVE_TIMER = null;
   var RESTORING = false;
-  var PHOTO_CACHE = {}; // { photoId: dataUrl }
-
-  function openDB(cb) {
-    try {
-      var req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onupgradeneeded = function () {
-        var db = req.result;
-        if (!db.objectStoreNames.contains(DB_STORE)) db.createObjectStore(DB_STORE);
-        if (!db.objectStoreNames.contains(DB_PHOTOS)) db.createObjectStore(DB_PHOTOS);
-      };
-      req.onsuccess = function () { cb(null, req.result); };
-      req.onerror = function () { cb(req.error || "DB open error"); };
-    } catch (e) { cb(e); }
-  }
-
-  function kvGet(key, cb) {
-    openDB(function (err, db) {
-      if (err) return cb(err);
-      try {
-        var tx = db.transaction([DB_STORE], "readonly");
-        var st = tx.objectStore(DB_STORE);
-        var rq = st.get(key);
-        rq.onsuccess = function () { try { db.close(); } catch (e) {} cb(null, rq.result); };
-        rq.onerror = function () { try { db.close(); } catch (e) {} cb(rq.error || "get error"); };
-      } catch (e2) { try { db.close(); } catch (e) {} cb(e2); }
-    });
-  }
-
-  function kvPut(key, val, cb) {
-    openDB(function (err, db) {
-      if (err) return cb && cb(err);
-      try {
-        var tx = db.transaction([DB_STORE], "readwrite");
-        tx.objectStore(DB_STORE).put(val, key);
-        tx.oncomplete = function () { try { db.close(); } catch (e) {} if (cb) cb(null); };
-        tx.onerror = function () { var er = tx.error; try { db.close(); } catch (e) {} if (cb) cb(er || "put error"); };
-      } catch (e2) { try { db.close(); } catch (e) {} if (cb) cb(e2); }
-    });
-  }
-
-  function kvDel(key, cb) {
-    openDB(function (err, db) {
-      if (err) return cb && cb(err);
-      try {
-        var tx = db.transaction([DB_STORE], "readwrite");
-        tx.objectStore(DB_STORE).delete(key);
-        tx.oncomplete = function () { try { db.close(); } catch (e) {} if (cb) cb(null); };
-        tx.onerror = function () { var er = tx.error; try { db.close(); } catch (e) {} if (cb) cb(er || "del error"); };
-      } catch (e2) { try { db.close(); } catch (e) {} if (cb) cb(e2); }
-    });
-  }
-
-  function photoPut(id, dataUrl, cb) {
-    if (!id) return cb && cb("no id");
-    PHOTO_CACHE[id] = dataUrl || "";
-    openDB(function (err, db) {
-      if (err) return cb && cb(err);
-      try {
-        var tx = db.transaction([DB_PHOTOS], "readwrite");
-        tx.objectStore(DB_PHOTOS).put(dataUrl || "", id);
-        tx.oncomplete = function () { try { db.close(); } catch (e) {} if (cb) cb(null); };
-        tx.onerror = function () { var er = tx.error; try { db.close(); } catch (e) {} if (cb) cb(er || "photo put error"); };
-      } catch (e2) { try { db.close(); } catch (e) {} if (cb) cb(e2); }
-    });
-  }
-
-  function photoGet(id, cb) {
-    if (!id) return cb && cb(null, "");
-    if (PHOTO_CACHE[id]) return cb && cb(null, PHOTO_CACHE[id]);
-
-    openDB(function (err, db) {
-      if (err) return cb && cb(err);
-      try {
-        var tx = db.transaction([DB_PHOTOS], "readonly");
-        var st = tx.objectStore(DB_PHOTOS);
-        var rq = st.get(id);
-        rq.onsuccess = function () {
-          var val = rq.result || "";
-          if (val) PHOTO_CACHE[id] = val;
-          try { db.close(); } catch (e) {}
-          cb(null, val);
-        };
-        rq.onerror = function () { try { db.close(); } catch (e) {} cb(rq.error || "photo get error"); };
-      } catch (e2) { try { db.close(); } catch (e) {} cb(e2); }
-    });
-  }
-
-  function photoDel(id, cb) {
-    if (!id) return cb && cb(null);
-    try { delete PHOTO_CACHE[id]; } catch (e) {}
-    openDB(function (err, db) {
-      if (err) return cb && cb(err);
-      try {
-        var tx = db.transaction([DB_PHOTOS], "readwrite");
-        tx.objectStore(DB_PHOTOS).delete(id);
-        tx.oncomplete = function () { try { db.close(); } catch (e) {} if (cb) cb(null); };
-        tx.onerror = function () { var er = tx.error; try { db.close(); } catch (e) {} if (cb) cb(er || "photo del error"); };
-      } catch (e2) { try { db.close(); } catch (e) {} if (cb) cb(e2); }
-    });
-  }
-
-  function photoGetMany(ids, cb) {
-    ids = ids || [];
-    var out = [];
-    var i = 0;
-    function next() {
-      if (i >= ids.length) return cb && cb(null, out);
-      var id = ids[i++];
-      photoGet(id, function (err, val) {
-        if (err) return cb && cb(err);
-        out.push(val || "");
-        next();
-      });
-    }
-    next();
-  }
-
-  function photoDelMany(ids, cb) {
-    ids = ids || [];
-    var i = 0;
-    function next() {
-      if (i >= ids.length) return cb && cb(null);
-      var id = ids[i++];
-      photoDel(id, function () { next(); });
-    }
-    next();
-  }
+  var STORAGE = window.SMGStorage || {};
+  function kvGet(key, cb) { return STORAGE.kvGet ? STORAGE.kvGet(key, cb) : cb && cb("no storage"); }
+  function kvPut(key, val, cb) { return STORAGE.kvPut ? STORAGE.kvPut(key, val, cb) : cb && cb("no storage"); }
+  function kvDel(key, cb) { return STORAGE.kvDel ? STORAGE.kvDel(key, cb) : cb && cb("no storage"); }
+  function photoPut(id, dataUrl, cb) { return STORAGE.photoPut ? STORAGE.photoPut(id, dataUrl, cb) : cb && cb("no storage"); }
+  function photoGet(id, cb) { return STORAGE.photoGet ? STORAGE.photoGet(id, cb) : cb && cb("no storage"); }
+  function photoDel(id, cb) { return STORAGE.photoDel ? STORAGE.photoDel(id, cb) : cb && cb("no storage"); }
+  function photoGetMany(ids, cb) { return STORAGE.photoGetMany ? STORAGE.photoGetMany(ids, cb) : cb && cb("no storage"); }
+  function photoDelMany(ids, cb) { return STORAGE.photoDelMany ? STORAGE.photoDelMany(ids, cb) : cb && cb("no storage"); }
 
   // =============================
   // SNAPSHOT (metadata only)
@@ -1264,120 +855,6 @@
   }
 
   // =============================
-  // SMART COMPRESSION
-  // =============================
-  function calcKB(dataUrl) {
-    try {
-      var s = String(dataUrl || "");
-      var comma = s.indexOf(",");
-      var b64 = (comma >= 0) ? s.substring(comma + 1) : s;
-      var len = b64.length;
-      if (!len) return 0;
-      var pad = 0;
-      if (b64.charAt(len - 1) === "=") pad++;
-      if (b64.charAt(len - 2) === "=") pad++;
-      var bytes = Math.floor((len * 3) / 4) - pad;
-      return Math.max(0, Math.round(bytes / 1024));
-    } catch (e) {
-      return 0;
-    }
-  }
-
-  function smartCompress(canvas) {
-    var targetKb = TARGET_KB || 60;
-    var qHi = JPEG_QUALITY_START || 0.9;
-    var qLo = 0.25;
-    var qLoFloor = 0.05;
-    var minShorts = [240, 160, 120];
-    var stage = 0;
-    var minShort = minShorts[0];
-
-    function encodeJpeg(c, q) {
-      var dataUrl = c.toDataURL("image/jpeg", q);
-      return { dataUrl: dataUrl, sizeKb: calcKB(dataUrl), q: q };
-    }
-
-    function resizeCanvas(src, w, h) {
-      var c2 = document.createElement("canvas");
-      c2.width = w;
-      c2.height = h;
-      var ctx = c2.getContext("2d");
-      try { ctx.imageSmoothingEnabled = true; } catch (e) {}
-      try { ctx.imageSmoothingQuality = "high"; } catch (e2) {}
-      ctx.drawImage(src, 0, 0, w, h);
-      return c2;
-    }
-
-    function bestQualityUnderTarget(c) {
-      var hi = Math.max(qLo, Math.min(0.98, qHi));
-      var lo = Math.max(0.05, Math.min(qLo, hi));
-
-      var rHi = encodeJpeg(c, hi);
-      if (rHi.sizeKb <= targetKb) return rHi;
-
-      var rLo = encodeJpeg(c, lo);
-      if (rLo.sizeKb > targetKb) return rLo;
-
-      var best = rLo;
-      var left = lo;
-      var right = hi;
-      for (var i = 0; i < 10; i++) {
-        var mid = (left + right) / 2;
-        var rMid = encodeJpeg(c, mid);
-        if (rMid.sizeKb <= targetKb) {
-          best = rMid;
-          left = mid;
-        } else {
-          right = mid;
-        }
-      }
-      return best;
-    }
-
-    var current = canvas;
-    var attempt = bestQualityUnderTarget(current);
-    var guard = 0;
-
-    while (attempt.sizeKb > targetKb && guard < 22) {
-      guard++;
-      var w0 = current.width || 0;
-      var h0 = current.height || 0;
-      var short = Math.min(w0, h0);
-      if (!short) break;
-
-      if (short > minShort) {
-        var scale = (guard <= 8) ? 0.92 : 0.88;
-        var nextShort = Math.max(minShort, Math.round(short * scale));
-        var scale2 = nextShort / short;
-        var w = Math.max(1, Math.round(w0 * scale2));
-        var h = Math.max(1, Math.round(h0 * scale2));
-        current = resizeCanvas(current, w, h);
-        attempt = bestQualityUnderTarget(current);
-        continue;
-      }
-
-      if (qLo > qLoFloor) {
-        qLo = Math.max(qLoFloor, qLo - 0.07);
-        attempt = bestQualityUnderTarget(current);
-        continue;
-      }
-
-      if (stage < minShorts.length - 1) {
-        stage++;
-        minShort = minShorts[stage];
-        qLo = 0.25;
-        qLoFloor = (stage === 1) ? 0.08 : 0.05;
-        attempt = bestQualityUnderTarget(current);
-        continue;
-      }
-
-      break;
-    }
-
-    return { dataUrl: attempt.dataUrl, sizeKb: attempt.sizeKb };
-  }
-
-  // =============================
   // TYPE MODAL
   // =============================
   var pendingCaptureType = "MATERIAL";
@@ -1438,51 +915,9 @@
         saveStateDebounced();
       });
     }
-
-    var w = getCompressWorker();
-    if (w && window.createImageBitmap) {
-      try {
-        createImageBitmap(file).then(function (bitmap) {
-          compressBitmapAsync(bitmap, function (err, packed) {
-            if (!err && packed) return done(null, packed);
-            fallbackMainThread();
-          });
-        }).catch(function () {
-          fallbackMainThread();
-        });
-        return;
-      } catch (e0) {}
-    }
-
-    fallbackMainThread();
-
-    function fallbackMainThread() {
-      var reader = new FileReader();
-      reader.onload = function (event) {
-        var img = new Image();
-        img.onload = function () {
-          var canvas = document.createElement("canvas");
-          var w2 = img.width, h2 = img.height;
-          if (w2 > MAX_WIDTH) {
-            h2 = Math.round(h2 * (MAX_WIDTH / w2));
-            w2 = MAX_WIDTH;
-          }
-          canvas.width = w2;
-          canvas.height = h2;
-          canvas.getContext("2d").drawImage(img, 0, 0, w2, h2);
-          try {
-            var packed2 = smartCompress(canvas);
-            done(null, packed2);
-          } catch (e1) {
-            done(e1);
-          }
-        };
-        img.onerror = function () { done(new Error("img_error")); };
-        img.src = event.target.result;
-      };
-      reader.onerror = function () { done(new Error("read_error")); };
-      reader.readAsDataURL(file);
-    }
+    compressFileAsync(file, function (err2, packed2) {
+      done(err2, packed2);
+    });
   }
 
   function handleFileSelect(e) {
@@ -1543,9 +978,18 @@
     var totalEl = $("photo-total-kb");
     var btnSave = $("btn-save");
     var btnAdd = $("btn-addpo");
+    var btnCam = $("btn-camera");
     var proc = $("processing-toast");
+    var procMsg = $("processing-msg");
 
-    if (processingCount === 0 && proc) proc.classList.add("hidden");
+    if (proc) {
+      if (processingCount > 0) {
+        proc.classList.remove("hidden");
+        if (procMsg) procMsg.innerText = "Mengompres (" + processingCount + ")...";
+      } else {
+        proc.classList.add("hidden");
+      }
+    }
     if (!strip) return;
 
     clearEl(strip);
@@ -1557,12 +1001,14 @@
       setEnabled(btnSave, false);
       // ADD PO selalu aktif: klik untuk fokus ke input PO NUMBER
       setEnabled(btnAdd, true);
+      setEnabled(btnCam, processingCount === 0);
       return;
     }
 
-    setEnabled(btnSave, true);
+    setEnabled(btnSave, processingCount === 0);
     // ADD PO selalu aktif (meski ada/tidak ada foto)
     setEnabled(btnAdd, true);
+    setEnabled(btnCam, processingCount === 0 && capturedFiles.length < 10);
 
     var totalKb = 0;
     for (var i = 0; i < capturedFiles.length; i++) totalKb += (capturedFiles[i].sizeKb || 0);
@@ -1619,6 +1065,46 @@
         strip.appendChild(wrap);
       })(k);
     }
+  }
+
+  function recalcQueueTotalKb(p) {
+    if (!p) return 0;
+    var total = 0;
+    var sizes = p.sizes || [];
+    for (var i = 0; i < sizes.length; i++) total += (sizes[i] || 0);
+    p.total_kb = total;
+    return total;
+  }
+
+  function onLightboxSaved(meta, photoId, dataUrl, sizeKb) {
+    if (!photoId) return;
+
+    for (var i = 0; i < capturedFiles.length; i++) {
+      if (capturedFiles[i] && capturedFiles[i].id === photoId) {
+        capturedFiles[i].dataUrl = dataUrl || "";
+        capturedFiles[i].sizeKb = sizeKb || 0;
+      }
+    }
+
+    if (meta && meta.source === "queue" && meta.queueIndex >= 0 && poQueue[meta.queueIndex]) {
+      var p = poQueue[meta.queueIndex];
+      var ids = p.image_ids || [];
+      var sizes = p.sizes || [];
+      for (var j = 0; j < ids.length; j++) {
+        if (ids[j] === photoId) {
+          sizes[j] = sizeKb || 0;
+          break;
+        }
+      }
+      p.sizes = sizes;
+      recalcQueueTotalKb(p);
+      renderPOList();
+      refreshStats();
+      persistSnapshotNow();
+    }
+
+    updatePreviewUI();
+    saveStateDebounced();
   }
 
   function removeDraftPhoto(i) {
@@ -3019,68 +2505,7 @@ mid.appendChild(topRow);
 
     // toast close
     on($("toastClose"), "click", hideToast);
-
-    // lightbox controls
-    on($("lb-backdrop"), "click", function () { if (!lbDraw.saving) lbClose(); });
-    on($("lb-close"), "click", function () { if (!lbDraw.saving) lbClose(); });
-    on($("lb-prev"), "click", lbPrev);
-    on($("lb-next"), "click", lbNext);
-    on($("lb-draw-toggle"), "click", function () { if (!uiLocked && !lbDraw.active) lbEnterDrawMode(); });
-    on($("lb-draw-cancel"), "click", function () { if (!lbDraw.saving) lbExitDrawMode(); });
-    on($("lb-draw-save"), "click", function () { if (!uiLocked) lbDrawSave(); });
-    on($("lb-color-red"), "click", function () { lbDraw.color = "#ef4444"; });
-    on($("lb-color-yellow"), "click", function () { lbDraw.color = "#f59e0b"; });
-    on($("lb-color-blue"), "click", function () { lbDraw.color = "#3b82f6"; });
-
-    var cv = $("lbCanvas");
-    if (cv) {
-      on(cv, "pointerdown", function (e) {
-        if (!lbDraw.active) return;
-        try { e.preventDefault(); } catch (x) {}
-        var pt = lbDrawPointFromEvent(e);
-        if (!pt) return;
-        lbDraw.drawing = true;
-        lbDraw.lastPt = pt;
-        var ctx = cv.getContext("2d");
-        if (ctx) {
-          ctx.strokeStyle = lbDraw.color || "#ef4444";
-          ctx.lineWidth = lbDraw.width || 8;
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
-          ctx.beginPath();
-          ctx.moveTo(pt[0], pt[1]);
-        }
-        try { cv.setPointerCapture(e.pointerId); } catch (y) {}
-      });
-      on(cv, "pointermove", function (e) {
-        if (!lbDraw.active || !lbDraw.drawing) return;
-        try { e.preventDefault(); } catch (x2) {}
-        var pt = lbDrawPointFromEvent(e);
-        if (!pt) return;
-        var ctx = cv.getContext("2d");
-        if (!ctx) return;
-        if (!lbDraw.lastPt) {
-          lbDraw.lastPt = pt;
-          ctx.beginPath();
-          ctx.moveTo(pt[0], pt[1]);
-          return;
-        }
-        ctx.lineTo(pt[0], pt[1]);
-        ctx.stroke();
-        lbDraw.lastPt = pt;
-      });
-      on(cv, "pointerup", function (e) {
-        if (!lbDraw.active) return;
-        try { e.preventDefault(); } catch (x3) {}
-        lbDraw.drawing = false;
-        lbDraw.lastPt = null;
-      });
-      on(cv, "pointercancel", function () {
-        if (!lbDraw.active) return;
-        lbDraw.drawing = false;
-        lbDraw.lastPt = null;
-      });
-    }
+    on($("diag-trigger"), "click", openDiagPanel);
 
     // optional toggle
     on($("btn-plus-meta"), "click", function (e) { try { e.preventDefault(); } catch (x) {} toggleOptional(); });
@@ -3163,6 +2588,17 @@ mid.appendChild(topRow);
     previewSkeletonEl = $("preview-skeleton");
 
     bindUi();
+    try {
+      if (window.SMGLightbox && window.SMGLightbox.init) {
+        window.SMGLightbox.init({
+          showToast: showToast,
+          photoPut: photoPut,
+          compressCanvasAsync: compressCanvasAsync,
+          onSaved: onLightboxSaved,
+          isUILocked: function () { return uiLocked; }
+        });
+      }
+    } catch (e) {}
 
     // default active icon = form
     setActiveNav("form");

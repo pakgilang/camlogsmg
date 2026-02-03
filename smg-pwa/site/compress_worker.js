@@ -116,7 +116,12 @@ self.onmessage = async function (ev) {
     }
 
     var dataUrl = toDataUrl(attempt.blob);
-    self.postMessage({ type: "done", id: id, ok: true, dataUrl: dataUrl, sizeKb: attempt.sizeKb });
+    self.postMessage({
+      type: "done",
+      id: id,
+      ok: true,
+      payload: { dataUrl: dataUrl, sizeKb: attempt.sizeKb, width: canvas.width || 0, height: canvas.height || 0 }
+    });
   } catch (err) {
     try { if (bitmap && bitmap.close) bitmap.close(); } catch (e1) {}
     self.postMessage({ type: "done", id: id, ok: false, error: String(err && err.message ? err.message : err) });

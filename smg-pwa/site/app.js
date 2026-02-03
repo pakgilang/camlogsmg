@@ -171,7 +171,7 @@
     var D = window.SMGDiag || null;
     var logs = [];
     try { logs = D && D.get ? D.get() : []; } catch (e) { logs = []; }
-    var tail = logs.slice(Math.max(0, logs.length - 60));
+    var tail = logs.slice(Math.max(0, logs.length - 3));
 
     var summary = {
       time: (function () { try { return new Date().toISOString(); } catch (e0) { return String(Date.now()); } })(),
@@ -201,7 +201,7 @@
       '  <pre class="text-[10px] leading-relaxed bg-slate-50 border border-slate-200 rounded-xl p-2 max-h-64 overflow-auto whitespace-pre-wrap">' + escapeHtml(txt) + '</pre>' +
       '</div>';
 
-    ovShow({ mode: "alert", icon: "info", title: "Diagnostik", sub: "Log ringkas (60 terakhir)", bodyHtml: html, okText: "Tutup", allowClose: true });
+    ovShow({ mode: "alert", icon: "info", title: "Diagnostik", sub: "Log ringkas (3 terakhir)", bodyHtml: html, okText: "Tutup", allowClose: true });
 
     setTimeout(function () {
       var bCopy = $("diag-copy");

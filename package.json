@@ -1,0 +1,24 @@
+{
+  "name": "camlog",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite site",
+    "build": "node --env-file=.env ./site/build-config.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pakgilang/camlogsmg.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/pakgilang/camlogsmg/issues"
+  },
+  "homepage": "https://github.com/pakgilang/camlogsmg#readme",
+  "description": "",
+  "devDependencies": {
+    "vite": "^8.0.14"
+  }
+}

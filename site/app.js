@@ -14,11 +14,34 @@
   "use strict";
 
   // =============================
-  // CONFIG (from /config.js)
+  // CONFIG (from /config.js & localStorage settings)
   // =============================
   var CFG = window.__APP_CONFIG__ || window.__CONFIG__ || {};
-  var GAS_API_URL = (CFG.GAS_API_URL || "").trim();
-  var API_KEY = (CFG.API_KEY || "").trim();
+  var GAS_API_URL = localStorage.getItem("SMG_SET_GAS_URL") || (CFG.GAS_API_URL || "").trim();
+  var API_KEY = localStorage.getItem("SMG_SET_API_KEY") || (CFG.API_KEY || "").trim();
+  var HISTORY_LIMIT = parseInt(localStorage.getItem("SMG_SET_HISTORY_LIMIT"), 10) || 50;
+  var APP_THEME = localStorage.getItem("SMG_SET_APP_THEME") || "default";
+
+  function applyTheme(theme) {
+    var classes = document.body.className.split(" ").filter(function (c) {
+      return c && c.indexOf("theme-") !== 0;
+    });
+    if (theme && theme !== "default") {
+      classes.push("theme-" + theme);
+    }
+    document.body.className = classes.join(" ").trim();
+
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+      var colors = {
+        "default": "#f8fafc",
+        "apple": "#f5f5f7",
+        "supabase": "#121212",
+        "facebook": "#f0f2f5"
+      };
+      meta.setAttribute("content", colors[theme] || "#f8fafc");
+    }
+  }
 
   // Safety: if config missing, still show UI but blocks upload
   function hasApi() {
@@ -56,7 +79,7 @@
 
   function navigate(viewId) {
     if (uiLocked) return;
-    var views = ["form", "data", "search"];
+    var views = ["form", "data", "search", "settings"];
     for (var i = 0; i < views.length; i++) {
       var v = $("view-" + views[i]);
       if (v) v.classList.add("hidden");
@@ -68,18 +91,20 @@
     setActiveNav(viewId);
 
     if (viewId === "data") loadData(true);
+    if (viewId === "settings") loadSettingsToUI();
   }
 
   // =============================
   
-  // Bottom nav active highlight (3 icon)
+  // Bottom nav active highlight (4 icon)
   function setActiveNav(viewId) {
     var map = {
       "form": "nav-form-icon",
       "data": "nav-data-icon",
-      "search": "nav-search-icon"
+      "search": "nav-search-icon",
+      "settings": "nav-settings-icon"
     };
-    var keys = ["form", "data", "search"];
+    var keys = ["form", "data", "search", "settings"];
     for (var i = 0; i < keys.length; i++) {
       var k = keys[i];
       var btn = $(map[k]);
@@ -88,17 +113,17 @@
       var active = (k === viewId);
       if (active) {
         btn.className =
-          "w-11 h-11 rounded-xl border border-blue-600 bg-white " +
-          "flex items-center justify-center active:scale-95 transition";
+          "w-11 h-11 rounded-xl border border-indigo-600 bg-indigo-50 " +
+          "flex items-center justify-center active:scale-95 transition duration-200";
       } else {
         btn.className =
-          "w-11 h-11 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 " +
-          "flex items-center justify-center active:scale-95 transition";
+          "w-11 h-11 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 " +
+          "flex items-center justify-center active:scale-95 transition duration-200";
       }
 
       // switch icon color
       var svg = btn.querySelector("svg");
-      if (svg) svg.setAttribute("class", active ? "w-5 h-5 text-blue-700" : "w-5 h-5 text-blue-600");
+      if (svg) svg.setAttribute("class", active ? "w-5 h-5 text-indigo-600" : "w-5 h-5 text-slate-500");
     }
   }
 
@@ -126,17 +151,17 @@
     t.innerText = text || "";
 
     if (type === "success") {
-      icon.className = "w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center";
-      setSvgUse(icon, "#ic-check", "text-emerald-700");
+      icon.className = "w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center";
+      setSvgUse(icon, "#ic-check", "text-emerald-600");
     } else if (type === "warning") {
-      icon.className = "w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center";
-      setSvgUse(icon, "#ic-warn", "text-amber-700");
+      icon.className = "w-8 h-8 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center";
+      setSvgUse(icon, "#ic-warn", "text-amber-650");
     } else if (type === "error") {
-      icon.className = "w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center";
-      setSvgUse(icon, "#ic-warn", "text-red-700");
+      icon.className = "w-8 h-8 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center";
+      setSvgUse(icon, "#ic-warn", "text-rose-650");
     } else {
-      icon.className = "w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center";
-      setSvgUse(icon, "#ic-info", "text-slate-700");
+      icon.className = "w-8 h-8 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center";
+      setSvgUse(icon, "#ic-info", "text-slate-600");
     }
 
     el.classList.remove("hidden");
@@ -255,22 +280,22 @@
     if (typeof opts.bodyHtml === "string") {
       body.innerHTML = opts.bodyHtml;
     } else {
-      body.innerHTML = '<div class="text-sm text-slate-700">' + escapeHtml(opts.text || "") + "</div>";
+      body.innerHTML = '<div class="text-sm text-slate-350">' + escapeHtml(opts.text || "") + "</div>";
     }
 
     var ic = opts.icon || "info";
     if (ic === "success") {
-      icon.className = "w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center";
-      setSvgUse(icon, "#ic-check", "text-emerald-700");
+      icon.className = "w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center";
+      setSvgUse(icon, "#ic-check", "text-emerald-400");
     } else if (ic === "warning") {
-      icon.className = "w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center";
-      setSvgUse(icon, "#ic-warn", "text-amber-700");
+      icon.className = "w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center";
+      setSvgUse(icon, "#ic-warn", "text-amber-400");
     } else if (ic === "error") {
-      icon.className = "w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center";
-      setSvgUse(icon, "#ic-warn", "text-red-700");
+      icon.className = "w-8 h-8 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center";
+      setSvgUse(icon, "#ic-warn", "text-rose-400");
     } else {
-      icon.className = "w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center";
-      setSvgUse(icon, "#ic-info", "text-slate-700");
+      icon.className = "w-8 h-8 rounded-xl bg-slate-800 border border-slate-750 flex items-center justify-center";
+      setSvgUse(icon, "#ic-info", "text-slate-350");
     }
 
     var isConfirm = (OV.mode === "confirm" || OV.mode === "form");
@@ -340,9 +365,9 @@
   // Search tab filter state
   var searchFilter = "all"; // all | git | foto
 
-  var MAX_WIDTH = 1000;
-  var JPEG_QUALITY_START = 0.9;
-  var TARGET_KB = 60;
+  var MAX_WIDTH = parseInt(localStorage.getItem("SMG_SET_MAX_WIDTH"), 10) || 1000;
+  var JPEG_QUALITY_START = parseFloat(localStorage.getItem("SMG_SET_QUALITY_START")) || 0.9;
+  var TARGET_KB = parseInt(localStorage.getItem("SMG_SET_TARGET_KB"), 10) || 60;
   var processingCount = 0;
   var uiLocked = false;
   var COMP = window.SMGCompress || {};
@@ -357,6 +382,7 @@
 
   // PO Mode
   var currentPOMode = "std";
+  var searchPOMode = "std";
   var MODE_PREFIXES = {
     "SL3": "188704",
     "SRG": "324700",
@@ -496,71 +522,21 @@
     if (st.poMode) setPOMode(st.poMode, false);
   }
 
-  function buildCapturedMeta() {
-    var arr = [];
-    for (var i = 0; i < capturedFiles.length; i++) {
-      var f = capturedFiles[i] || {};
-      arr.push({ id: f.id || "", sizeKb: f.sizeKb || 0, jenis: f.jenis || "MATERIAL" });
-    }
-    return arr;
-  }
-
-  function sanitizeQueueOnRestore() {
-    for (var i = 0; i < poQueue.length; i++) {
-      var p = poQueue[i] || {};
-      p.created_by = p.created_by || "GUEST";
-      p.kategori = "MATERIAL";
-      p.po_mode = p.po_mode || "std";
-      p.no_po = normalizePOWithMode(p.po_mode, p.no_po || "");
-      p.pic_po = p.pic_po || "";
-      p.git_number = p.git_number || "";
-      p.keterangan = p.keterangan || "";
-
-      p.image_ids = p.image_ids || [];
-      p.sizes = p.sizes || [];
-      p.photo_types = p.photo_types || [];
-      p.total_kb = p.total_kb || 0;
-
-      if (p.photo_types.length !== p.image_ids.length) {
-        var fixed = [];
-        for (var j = 0; j < p.image_ids.length; j++) fixed.push("MATERIAL");
-        p.photo_types = fixed;
-      }
-
-      p.status_upload_ke_srm = p.status_upload_ke_srm || "Pending";
-      p._uploaded = !!p._uploaded;
-      p.upload_id = p.upload_id || makeLegacyUploadId(p);
-
-      if (p.images) try { delete p.images; } catch (e) {}
-
-      poQueue[i] = p;
-    }
-  }
-
-  function sanitizeCapturedOnRestore() {
-    for (var i = 0; i < capturedFiles.length; i++) {
-      if (!capturedFiles[i]) capturedFiles[i] = {};
-      if (!capturedFiles[i].jenis) capturedFiles[i].jenis = "MATERIAL";
-      if (!capturedFiles[i].id) capturedFiles[i].id = "";
-      if (!capturedFiles[i].dataUrl) capturedFiles[i].dataUrl = "";
-      if (!capturedFiles[i].sizeKb) capturedFiles[i].sizeKb = 0;
-    }
+  function getAppState() {
+    return {
+      form: getFormState(),
+      poQueue: poQueue || [],
+      currentPOMode: currentPOMode,
+      uploadArmed: !!uploadArmed,
+      capturedFiles: capturedFiles || []
+    };
   }
 
   function persistSnapshotNow(cb) {
+    if (RESTORING) return;
     try {
-      var snap = {
-        v: 3,
-        ts: Date.now(),
-        currentCategory: "MATERIAL",
-        currentPOMode: currentPOMode,
-        capturedMeta: buildCapturedMeta(),
-        poQueue: poQueue || [],
-        form: getFormState(),
-        uploadArmed: !!uploadArmed
-      };
-
-      kvPut("snapshot", snap, function (err) {
+      var state = getAppState();
+      SMGStorage.saveAppState(state, function (err) {
         if (!err && !RESTORING) showDraftSaved();
         if (cb) cb(err || null);
       });
@@ -573,154 +549,36 @@
     SAVE_TIMER = setTimeout(function () { persistSnapshotNow(); }, 450);
   }
 
-  function clearPersistedState() {
-    kvDel("snapshot");
-  }
-
-  // Legacy migration (if old snapshot still stored base64)
-  function migrateLegacySnapshot(snap, done) {
-    var tasks = [];
-    var i;
-
-    function makePhotoId() {
-      return "PH_" + Date.now() + "_" + Math.random().toString(16).slice(2);
-    }
-
-    if (snap && snap.capturedFiles && snap.capturedFiles.length) {
-      for (i = 0; i < snap.capturedFiles.length; i++) {
-        (function (f) {
-          if (!f || !f.dataUrl) return;
-          tasks.push(function (cb) {
-            var id = makePhotoId();
-            photoPut(id, f.dataUrl, function (err) {
-              if (!err) {
-                capturedFiles.push({ id: id, dataUrl: f.dataUrl, sizeKb: f.sizeKb || 0, jenis: f.jenis || "MATERIAL" });
-              }
-              cb(null);
-            });
-          });
-        })(snap.capturedFiles[i]);
-      }
-    }
-
-    var legacyQueue = (snap && snap.poQueue) ? snap.poQueue : [];
-    for (i = 0; i < legacyQueue.length; i++) {
-      (function (p) {
-        if (!p) return;
-        if (p.image_ids && p.image_ids.length) return;
-        if (!p.images || !p.images.length) return;
-
-        tasks.push(function (cb) {
-          var ids = [];
-          var sizes = p.sizes || [];
-          var types = p.photo_types || [];
-          var idx = 0;
-
-          function next() {
-            if (idx >= p.images.length) {
-              p.image_ids = ids;
-              p.sizes = (sizes && sizes.length === ids.length) ? sizes : (function () {
-                var s = []; for (var k = 0; k < ids.length; k++) s.push(0); return s;
-              })();
-              p.photo_types = (types && types.length === ids.length) ? types : (function () {
-                var t = []; for (var k2 = 0; k2 < ids.length; k2++) t.push("MATERIAL"); return t;
-              })();
-              try { delete p.images; } catch (e) {}
-              cb(null);
-              return;
-            }
-
-            var dataUrl = p.images[idx];
-            var id = makePhotoId();
-            idx++;
-
-            photoPut(id, dataUrl, function () {
-              ids.push(id);
-              next();
-            });
-          }
-
-          next();
-        });
-      })(legacyQueue[i]);
-    }
-
-    var t = 0;
-    function runNext() {
-      if (t >= tasks.length) return done && done();
-      tasks[t++](function () { runNext(); });
-    }
-    runNext();
-  }
-
-  function hydrateCapturedFilesFromDB(meta, cb) {
-    meta = meta || [];
-    capturedFiles = [];
-    var i = 0;
-
-    function next() {
-      if (i >= meta.length) return cb && cb();
-      var m = meta[i++] || {};
-      var id = m.id || "";
-      var sizeKb = m.sizeKb || 0;
-      var jenis = m.jenis || "MATERIAL";
-
-      photoGet(id, function (err, dataUrl) {
-        capturedFiles.push({ id: id, dataUrl: dataUrl || "", sizeKb: sizeKb, jenis: jenis });
-        next();
-      });
-    }
-    next();
+  function clearPersistedState(cb) {
+    SMGStorage.clearAppState(cb);
   }
 
   function restoreSnapshot(cb) {
-    kvGet("snapshot", function (err, snap) {
-      if (err || !snap) return cb && cb(false);
-
-      RESTORING = true;
+    RESTORING = true;
+    SMGStorage.loadAppState(function (err, state) {
+      if (err || !state) {
+        RESTORING = false;
+        return cb && cb(false);
+      }
 
       try {
-        currentPOMode = snap.currentPOMode || "std";
-        poQueue = snap.poQueue || [];
-        uploadArmed = !!snap.uploadArmed;
+        currentPOMode = state.currentPOMode || "std";
+        poQueue = state.poQueue || [];
+        uploadArmed = !!state.uploadArmed;
+        capturedFiles = state.capturedFiles || [];
       } catch (e) {
         RESTORING = false;
         return cb && cb(false);
       }
 
       setPOMode(currentPOMode, false);
-      applyFormState(snap.form || null);
+      applyFormState(state.form || null);
 
-      var legacyHasBase64 =
-        (!!snap.capturedFiles && snap.capturedFiles.length) ||
-        (poQueue && poQueue.length && poQueue[0] && poQueue[0].images && poQueue[0].images.length);
-
-      if (legacyHasBase64 || (snap.v && snap.v < 3)) {
-        migrateLegacySnapshot(snap, function () {
-          sanitizeQueueOnRestore();
-          sanitizeCapturedOnRestore();
-          renderPOList();
-          updatePreviewUI();
-          refreshStats();
-          persistSnapshotNow(function () {
-            RESTORING = false;
-            cb && cb(true);
-          });
-        });
-        return;
-      }
-
-      var meta = snap.capturedMeta || [];
-      sanitizeQueueOnRestore();
-
-      hydrateCapturedFilesFromDB(meta, function () {
-        sanitizeCapturedOnRestore();
-        renderPOList();
-        updatePreviewUI();
-        refreshStats();
-        RESTORING = false;
-        cb && cb(true);
-      });
+      renderPOList();
+      updatePreviewUI();
+      refreshStats();
+      RESTORING = false;
+      cb && cb(true);
     });
   }
 
@@ -834,18 +692,49 @@
       if (keys[i] === currentPOMode) {
         b.className =
           "flex-1 py-2 rounded-lg text-[11px] font-bold flex items-center " +
-          "justify-center gap-2 bg-white text-blue-700 shadow-sm ring-1 " +
-          "ring-blue-100";
+          "justify-center gap-2 bg-indigo-600 text-white shadow shadow-indigo-600/30";
       } else {
         b.className =
           "flex-1 py-2 rounded-lg text-[11px] font-semibold flex items-center " +
-          "justify-center gap-2 text-slate-600 hover:text-slate-800 " +
-          "hover:bg-white/60";
+          "justify-center gap-2 text-slate-400 hover:text-slate-200 " +
+          "hover:bg-slate-850 transition duration-200";
       }
     }
 
     if (shouldNormalizeNow) normalizeCurrentPOInput();
     saveStateDebounced();
+  }
+
+  function normalizeSearchInput() {
+    var qEl = $("search-input");
+    if (!qEl) return;
+    qEl.value = normalizePOWithMode(searchPOMode, qEl.value);
+  }
+
+  function setSearchPOMode(mode, shouldNormalizeNow) {
+    searchPOMode = mode || "std";
+
+    var keys = ["std", "SL3", "SRG", "PML", "BYS"];
+    for (var i = 0; i < keys.length; i++) {
+      var id = "search-mode-" + keys[i];
+      var b = $(id);
+      if (!b) continue;
+
+      if (keys[i] === searchPOMode) {
+        b.className =
+          "flex-1 py-2 rounded-lg text-[11px] font-bold flex items-center " +
+          "justify-center gap-2 bg-indigo-600 text-white shadow shadow-indigo-600/30";
+      } else {
+        b.className =
+          "flex-1 py-2 rounded-lg text-[11px] font-semibold flex items-center " +
+          "justify-center gap-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition duration-200";
+      }
+    }
+
+    if (shouldNormalizeNow) {
+      normalizeSearchInput();
+      doSearch();
+    }
   }
 
   function displayModeLabel(m) {
@@ -1028,8 +917,8 @@
 
         var wrap = document.createElement("div");
         wrap.className =
-          "relative w-24 h-24 rounded-xl overflow-hidden border border-slate-200 " +
-          "shadow-sm bg-slate-100 flex-shrink-0";
+          "relative w-24 h-24 rounded-xl overflow-hidden border border-slate-800 " +
+          "shadow-sm bg-slate-900 flex-shrink-0";
 
         var im = document.createElement("img");
         im.src = f.dataUrl || "";
@@ -1039,14 +928,14 @@
 
         var jb = document.createElement("div");
         jb.className =
-          "absolute top-1 left-1 bg-black/65 text-white text-[9px] " +
-          "px-1.5 py-0.5 rounded backdrop-blur-sm font-extrabold";
+          "absolute top-1 left-1 bg-slate-950/85 text-white text-[9px] " +
+          "px-1.5 py-0.5 rounded backdrop-blur-sm font-extrabold border border-white/5";
         jb.innerText = (f.jenis || "MATERIAL");
         wrap.appendChild(jb);
 
         var btn = document.createElement("button");
         btn.className =
-          "absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full " +
+          "absolute top-1 right-1 w-5 h-5 bg-rose-600 text-white rounded-full " +
           "flex items-center justify-center text-[10px] shadow active:scale-95";
         btn.onclick = function () { removeDraftPhoto(idx); };
         btn.innerHTML =
@@ -1057,7 +946,7 @@
 
         var badge = document.createElement("div");
         badge.className =
-          "absolute bottom-1 left-1 bg-black/60 text-white text-[9px] " +
+          "absolute bottom-1 left-1 bg-slate-950/85 text-slate-300 text-[9px] " +
           "px-1.5 py-0.5 rounded backdrop-blur-sm";
         badge.innerText = (f.sizeKb || 0) + " KB";
         wrap.appendChild(badge);
@@ -1416,14 +1305,14 @@ function saveDraft(startNew) {
         var gitLabel = (p.git_number) ? (" • GIT: " + p.git_number) : "";
 
         var card = document.createElement("div");
-        card.className = "bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden";
+        card.className = "bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden hover:border-slate-300 transition-all duration-200";
 
         var inner = document.createElement("div");
         inner.className = "p-3 flex items-center gap-3";
 
         var thumbBox = document.createElement("div");
         thumbBox.className =
-          "w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden " +
+          "w-12 h-12 rounded-lg bg-slate-50 border border-slate-200/60 overflow-hidden " +
           "flex items-center justify-center flex-shrink-0";
 
         var imgEl = document.createElement("img");
@@ -1431,7 +1320,7 @@ function saveDraft(startNew) {
         thumbBox.appendChild(imgEl);
 
         var placeholder = document.createElement("div");
-        placeholder.innerHTML = '<svg class="w-5 h-5 text-slate-300"><use href="#ic-image"></use></svg>';
+        placeholder.innerHTML = '<svg class="w-5 h-5 text-slate-400"><use href="#ic-image"></use></svg>';
         thumbBox.appendChild(placeholder);
 
         if (p.image_ids && p.image_ids[0]) {
@@ -1460,7 +1349,7 @@ function saveDraft(startNew) {
         t1.innerText = title;
 
         var t2 = document.createElement("div");
-        t2.className = "text-[10px] text-slate-500";
+        t2.className = "text-[10px] text-slate-455";
         t2.innerText = "MATERIAL" + modeLabel + gitLabel + " • " + fotoCount + " foto • " + kb + " KB";
 
         textWrap.appendChild(t1);
@@ -1468,8 +1357,8 @@ function saveDraft(startNew) {
 
         var del = document.createElement("button");
         del.className =
-          "w-9 h-9 rounded-lg bg-red-50 border border-red-100 text-red-600 " +
-          "flex items-center justify-center active:scale-95";
+          "w-9 h-9 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 " +
+          "flex items-center justify-center active:scale-95 hover:bg-rose-100/60 transition duration-150";
         del.innerHTML = '<svg class="w-5 h-5"><use href="#ic-trash"></use></svg>';
         del.onclick = function () { confirmDeletePO(idx); };
 
@@ -1481,8 +1370,8 @@ function saveDraft(startNew) {
 
         var b1 = document.createElement("button");
         b1.className =
-          "bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 " +
-          "text-[11px] font-bold py-2 rounded-lg active:scale-95";
+          "bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-slate-700 " +
+          "text-[11px] font-bold py-2 rounded-lg active:scale-95 transition duration-150";
         b1.innerHTML =
           '<span class="inline-flex items-center gap-1">' +
           '  <svg class="w-4 h-4"><use href="#ic-eye"></use></svg>' +
@@ -1493,7 +1382,7 @@ function saveDraft(startNew) {
         var b2 = document.createElement("button");
         b2.className =
           "bg-amber-50 hover:bg-amber-100 border border-amber-100 text-amber-700 " +
-          "text-[11px] font-bold py-2 rounded-lg active:scale-95";
+          "text-[11px] font-bold py-2 rounded-lg active:scale-95 transition duration-150";
         b2.innerHTML =
           '<span class="inline-flex items-center gap-1">' +
           '  <svg class="w-4 h-4"><use href="#ic-pen"></use></svg>' +
@@ -1504,8 +1393,8 @@ function saveDraft(startNew) {
 
         var b3 = document.createElement("button");
         b3.className =
-          "bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 " +
-          "text-[11px] font-bold py-2 rounded-lg active:scale-95";
+          "bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-slate-700 " +
+          "text-[11px] font-bold py-2 rounded-lg active:scale-95 transition duration-150";
         b3.innerHTML =
           '<span class="inline-flex items-center gap-1">' +
           '  <svg class="w-4 h-4"><use href="#ic-hash"></use></svg>' +
@@ -2137,8 +2026,8 @@ mid.appendChild(topRow);
     metaLeft += '<div class="text-[11px] font-bold text-slate-800">' + escapeHtml(vendor) + '</div>';
     if (company) metaLeft += '<div class="text-[10px] text-slate-500">' + escapeHtml(company) + '</div>';
     metaLeft += '<div class="mt-1 flex flex-wrap gap-1">' +
-      (po ? '<span class="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">PO: ' + escapeHtml(po) + '</span>' : '') +
-      (git ? '<span class="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">GIT: ' + escapeHtml(git) + '</span>' : '') +
+      (po ? '<span class="text-[10px] font-mono bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-150/40">PO: ' + escapeHtml(po) + '</span>' : '') +
+      (git ? '<span class="text-[10px] font-mono bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-150/40">GIT: ' + escapeHtml(git) + '</span>' : '') +
       '</div>';
 
     var metaRight = '';
@@ -2158,7 +2047,7 @@ mid.appendChild(topRow);
     if (c.length) {
       chips += '<div class="mt-2 flex flex-wrap gap-1">';
       for (var ci = 0; ci < c.length; ci++) {
-        chips += '<span class="text-[10px] bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded">' +
+        chips += '<span class="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded">' +
           escapeHtml(c[ci][0]) + ': <span class="font-mono">' + escapeHtml(c[ci][1]) + '</span></span>';
       }
       chips += '</div>';
@@ -2177,9 +2066,9 @@ mid.appendChild(topRow);
         var name = m.material || m.MATERIAL || m.nama || "-";
         var qty = (m.qtyConfirmed != null ? m.qtyConfirmed : (m.QTY_CONFIRMED != null ? m.QTY_CONFIRMED : (m.qty || m.QTY || 0)));
         var unit = m.unit || m.UNIT || "";
-        matDetail += '<div class="text-[10px] bg-slate-50 border border-slate-100 p-1.5 rounded flex justify-between">' +
-          '<span class="font-semibold text-slate-700">' + escapeHtml(name) + '</span>' +
-          '<span class="font-mono text-slate-500">' + escapeHtml(String(qty)) + ' ' + escapeHtml(String(unit)) + '</span>' +
+        matDetail += '<div class="text-[10px] bg-slate-50 border border-slate-150 p-1.5 rounded flex justify-between">' +
+          '<span class="font-semibold text-slate-800">' + escapeHtml(name) + '</span>' +
+          '<span class="font-mono text-slate-600">' + escapeHtml(String(qty)) + ' ' + escapeHtml(String(unit)) + '</span>' +
           '</div>';
       }
       matDetail += '</div>';
@@ -2188,12 +2077,25 @@ mid.appendChild(topRow);
     // photos strip
     var photoHtml = '';
     if (ids.length) {
-      photoHtml = '<div class="mt-2 flex gap-1 overflow-x-auto pb-1">';
+      var sliderId = 'slider-' + git + '-' + Math.random().toString(16).slice(2);
+      var counterId = 'counter-' + sliderId;
+      photoHtml = '<div class="relative w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50 mt-3 shadow-sm aspect-video">';
+      photoHtml += '  <div id="' + sliderId + '" class="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide h-full" onscroll="try { var total = ' + ids.length + '; var s = document.getElementById(\'' + sliderId + '\'); var c = document.getElementById(\'' + counterId + '\'); var idx = Math.round(s.scrollLeft / s.clientWidth) + 1; c.innerText = idx + \' / \' + total; } catch(e) {}">';
+      
+      var lightboxItemsArrayStr = JSON.stringify(ids.map(function(id) { return 'https://lh3.googleusercontent.com/d/' + id + '=s0'; })).replace(/"/g, "'");
+      
       for (var j = 0; j < ids.length; j++) {
         var pid = ids[j].trim();
-        var thumb = 'https://lh3.googleusercontent.com/d/' + pid + '=w120-h120-k-no-nu';
-        photoHtml += '<img src="' + thumb + '" class="w-11 h-11 rounded-lg object-cover border border-slate-200 flex-shrink-0 bg-slate-100" ' +
-          'onclick="window.openLightbox(\'' + pid + '\')">';
+        var imgUrl = 'https://lh3.googleusercontent.com/d/' + pid + '=w600';
+        photoHtml += '    <div class="w-full h-full flex-shrink-0 snap-center flex justify-center items-center relative bg-black/5">';
+        photoHtml += '      <img src="' + imgUrl + '" referrerpolicy="no-referrer" class="w-full h-full object-contain cursor-zoom-in" onclick="window.openLightboxGroup(' + lightboxItemsArrayStr + ', ' + j + ')">';
+        photoHtml += '    </div>';
+      }
+      photoHtml += '  </div>';
+      if (ids.length > 1) {
+        photoHtml += '  <div id="' + counterId + '" class="absolute bottom-2 right-2 bg-slate-900/60 backdrop-blur-sm text-white px-2 py-0.5 rounded-lg text-[10px] font-bold select-none pointer-events-none">';
+        photoHtml += '    1 / ' + ids.length;
+        photoHtml += '  </div>';
       }
       photoHtml += '</div>';
     }
@@ -2202,20 +2104,20 @@ mid.appendChild(topRow);
     var hasDetail = (!!matDetail) || (!!ket);
 
     return '' +
-      '<div class="bg-white p-3 rounded-xl border border-blue-100 shadow-sm mb-3">' +
+      '<div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm mb-3 hover:border-slate-350 transition-all duration-200">' +
       '  <div class="flex justify-between items-start gap-3">' +
       '    <div class="min-w-0">' +
-      '      <div class="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded inline-block mb-1">DATA SRM</div>' +
+      '      <div class="text-[9px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg inline-block mb-1">DATA SRM</div>' +
       metaLeft +
       '    </div>' +
       '    <div class="flex-shrink-0">' + metaRight + '</div>' +
       '  </div>' +
       (chips || '') +
-      (ket ? '<div class="mt-2 text-[10px] text-slate-500">Ket: <span class="text-slate-700">' + escapeHtml(ket) + '</span></div>' : '') +
+      (ket ? '<div class="mt-2 text-[10px] text-slate-500">Ket: <span class="text-slate-800">' + escapeHtml(ket) + '</span></div>' : '') +
       (matSummary || '') +
       (photoHtml || '') +
       (hasDetail ?
-        ('<button type="button" class="mt-2 text-[11px] font-bold text-blue-700 hover:text-blue-800 active:scale-95" data-toggle="' + detailId + '">Lihat detail</button>' +
+        ('<button type="button" class="mt-2 text-[11px] font-bold text-indigo-600 hover:text-indigo-750 active:scale-95 transition" data-toggle="' + detailId + '">Lihat detail</button>' +
          '<div id="' + detailId + '" class="hidden">' + (matDetail || '') + '</div>')
         : '') +
       '</div>';
@@ -2225,31 +2127,31 @@ mid.appendChild(topRow);
   function renderPhotoItem(row) {
     // row: [0]ID, [1]ID_FOTO, [2]KATEGORI, [3]PO, [4]GIT, [5]PIC, [6]KET, [7]TIME, ...
     var idFoto = row[1];
-    var thumb = "https://lh3.googleusercontent.com/d/" + idFoto + "=s100";
+    var imgUrl = "https://lh3.googleusercontent.com/d/" + idFoto + "=w600";
 
-    // Fix: beberapa data menyimpan kategori ganda (mis. "MATERIAL,MATERIAL").
-    // Tampilkan hanya 1 kategori untuk 1 gambar.
     var rawCat = (row && row[2]) ? String(row[2]) : "";
     var cat = "FOTO";
     if (rawCat) {
       var parts = rawCat.split(/[,|;]+/).map(function (s) { return (s || "").trim(); }).filter(Boolean);
       if (parts.length) {
-        // ambil kategori pertama yang tidak kosong
         cat = parts[0];
       }
     }
 
     return '' +
-      '<div class="bg-white p-2 rounded-lg border border-slate-200 shadow-sm flex gap-3 items-center mb-2">' +
-      '  <img src="' + thumb + '" class="w-12 h-12 rounded object-cover cursor-pointer bg-slate-100" ' +
-      '       onclick="window.openLightbox(\'' + idFoto + '\')">' +
-      '  <div class="flex-1 min-w-0">' +
-      '    <div class="flex justify-between">' +
-      '       <div class="text-xs font-bold text-slate-700 truncate">PO: ' + (row[3] || "-") + '</div>' +
-      '       <div class="text-[9px] bg-slate-100 px-1 rounded text-slate-500 h-fit">' + cat + '</div>' +
+      '<div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden mb-2 hover:border-slate-350 transition-all duration-200">' +
+      '  <div class="relative w-full aspect-video bg-slate-50 flex justify-center items-center overflow-hidden border-b border-slate-100">' +
+      '    <img src="' + imgUrl + '" referrerpolicy="no-referrer" class="w-full h-full object-contain cursor-zoom-in" onclick="window.openLightbox(\'' + idFoto + '\')">' +
+      '    <div class="absolute top-2 right-2 bg-slate-900/60 backdrop-blur-sm text-white px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider">' + cat + '</div>' +
+      '  </div>' +
+      '  <div class="p-3">' +
+      '    <div class="flex justify-between items-start">' +
+      '      <div class="min-w-0 flex-1">' +
+      '        <div class="text-xs font-bold text-slate-800">PO: <span class="font-mono">' + (row[3] || "-") + '</span></div>' +
+      '        <div class="text-[10px] text-slate-500 truncate mt-1">' + (row[6] || "Tanpa Keterangan") + '</div>' +
+      '      </div>' +
+      '      <div class="text-right text-[9px] text-slate-400 font-mono flex-shrink-0 ml-2">' + safeDate(row[7]) + '</div>' +
       '    </div>' +
-      '    <div class="text-[10px] text-slate-500 truncate">' + (row[6] || "Tanpa Keterangan") + '</div>' +
-      '    <div class="text-[9px] text-slate-400 font-mono mt-0.5">' + safeDate(row[7]) + '</div>' +
       '  </div>' +
       '</div>';
   }
@@ -2257,6 +2159,10 @@ mid.appendChild(topRow);
   // Helper global untuk onclick string HTML
   window.openLightbox = function(id) {
     lbShow(["https://lh3.googleusercontent.com/d/" + id + "=s0"], 0, null);
+  };
+
+  window.openLightboxGroup = function(urls, startIndex) {
+    lbShow(urls, startIndex, null);
   };
 
   function setSearchFilter(filter) {
@@ -2280,26 +2186,26 @@ mid.appendChild(topRow);
       var active = pairs[i][1];
       if (!btn) continue;
       btn.className = active
-        ? "px-2 py-1 rounded-lg text-[11px] font-bold border border-blue-200 bg-blue-50 text-blue-700 active:scale-95"
-        : "px-2 py-1 rounded-lg text-[11px] font-bold border border-slate-200 bg-white hover:bg-slate-50 active:scale-95";
+        ? "px-3 py-1.5 rounded-lg text-[11px] font-bold border border-indigo-200 bg-indigo-50 text-indigo-700 active:scale-95 transition"
+        : "px-3 py-1.5 rounded-lg text-[11px] font-bold border border-slate-200 bg-white hover:bg-slate-50 active:scale-95 text-slate-500 transition";
     }
   }
 
   function renderSearchSummary(q, gCount, pCount) {
     return '' +
-      '<div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm mb-3">' +
+      '<div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm mb-3">' +
       '  <div class="flex items-start justify-between gap-3">' +
       '    <div class="min-w-0">' +
       '      <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hasil Pencarian</div>' +
       '      <div class="text-sm font-bold text-slate-800 mt-0.5">PO: <span class="font-mono">' + escapeHtml(q || "") + '</span></div>' +
-      '      <div class="text-[11px] text-slate-500 mt-0.5">' +
+      '      <div class="text-[11px] text-slate-500 mt-1">' +
       '        <span class="inline-flex items-center gap-1">' +
-      '          <span class="w-2 h-2 rounded-full bg-blue-500"></span>' +
+      '          <span class="w-2 h-2 rounded-full bg-indigo-600"></span>' +
       '          <span>GIT: <b>' + (gCount || 0) + '</b></span>' +
       '        </span>' +
-      '        <span class="mx-2 text-slate-300">|</span>' +
+      '        <span class="mx-2 text-slate-200">|</span>' +
       '        <span class="inline-flex items-center gap-1">' +
-      '          <span class="w-2 h-2 rounded-full bg-slate-500"></span>' +
+      '          <span class="w-2 h-2 rounded-full bg-slate-455"></span>' +
       '          <span>Foto: <b>' + (pCount || 0) + '</b></span>' +
       '        </span>' +
       '      </div>' +
@@ -2319,19 +2225,8 @@ mid.appendChild(topRow);
     var rawQ = (qEl.value || "").trim();
     if (!rawQ) return;
 
-   // --- NORMALISASI INPUT (HANYA jika 4 digit murni) ---
-   var normalizedQ = rawQ;
-   
-   // normalisasi cuma kalau user input persis 4 digit (contoh: "1234")
-   if (/^\d{4}$/.test(rawQ)) {
-     normalizedQ = normalizePOWithMode(currentPOMode || "std", rawQ);
-   
-     // Update input UI biar user sadar auto-formatnya (hanya saat memang dinormalisasi)
-     qEl.value = normalizedQ;
-   }
-    
-    // Update input UI biar user sadar auto-formatnya
-    qEl.value = normalizedQ;
+    normalizeSearchInput();
+    var normalizedQ = qEl.value;
     
     res.innerHTML = 
       '<div class="text-center text-xs text-slate-400 mt-8">' + 
@@ -2396,12 +2291,49 @@ mid.appendChild(topRow);
     });
   }
 
+  // --- RENDERING FOTO SEBAGAI INSTAGRAM GRID (RIWAYAT) ---
+  var historyUrls = [];
+  var historyIds = [];
+
+  window.openHistoryLightbox = function(startIndex) {
+    lbShow(historyUrls, startIndex, { ids: historyIds, source: "history" });
+  };
+
+  function renderHistoryGridItem(row, idx) {
+    var idFoto = row[1];
+    var imgUrl = "https://lh3.googleusercontent.com/d/" + idFoto + "=w600";
+
+    var rawCat = (row && row[2]) ? String(row[2]) : "";
+    var cat = "FOTO";
+    if (rawCat) {
+      var parts = rawCat.split(/[,|;]+/).map(function (s) { return (s || "").trim(); }).filter(Boolean);
+      if (parts.length) {
+        cat = parts[0];
+      }
+    }
+
+    var poText = row[3] || "-";
+    var timeText = safeDate(row[7]);
+
+    return '' +
+      '<div class="relative w-full aspect-[3/4] group overflow-hidden rounded-xl bg-slate-100 border border-slate-200/40 cursor-pointer shadow-sm hover:shadow active:scale-[0.98] transition-all duration-200" ' +
+      '     onclick="window.openHistoryLightbox(' + idx + ')">' +
+      '  <img src="' + imgUrl + '" referrerpolicy="no-referrer" class="w-full h-full object-cover rounded-xl transition-transform duration-300 group-hover:scale-105" loading="lazy">' +
+      '  <!-- Top Right Category Badge -->' +
+      '  <div class="absolute top-1 right-1 bg-black/60 backdrop-blur-md text-[8px] font-bold text-white px-1 py-0.5 rounded uppercase tracking-wider">' + cat + '</div>' +
+      '  <!-- Bottom Overlay (always visible but elegant) -->' +
+      '  <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-2 pt-8 flex flex-col justify-end text-white select-none pointer-events-none">' +
+      '    <div class="text-[10px] font-bold tracking-tight font-mono truncate">PO: ' + poText + '</div>' +
+      '    <div class="text-[8px] text-white/70 font-mono mt-0.5">' + timeText + '</div>' +
+      '  </div>' +
+      '</div>';
+  }
+
   function loadData(force) {
-     // ... kode loadData yang lama tetap sama (tidak perlu diubah untuk request ini) ...
-     // ... biarkan seperti di file asli ...
     var container = $("history-list");
     if (!container) return;
 
+    container.className = ""; // Reset grid layout to prevent centering issues
     container.innerHTML =
       '<div class="p-4 text-center text-xs text-slate-400">' +
       '  <span class="inline-flex items-center gap-2">' +
@@ -2410,7 +2342,7 @@ mid.appendChild(topRow);
       "  </span>" +
       "</div>";
 
-    // Riwayat: ambil dari sheet PENDING_MATERIAL (tanpa filter) dan tampilkan 50 data.
+    // Riwayat: ambil dari sheet PENDING_MATERIAL (tanpa filter) dan tampilkan data dibatasi HISTORY_LIMIT.
     apiGet("getPendingFotoMaterial", {}, function (err, data) {
       container.innerHTML = "";
       if (err) {
@@ -2422,11 +2354,26 @@ mid.appendChild(topRow);
         container.innerHTML = '<div class="p-4 text-center text-xs text-slate-300">Kosong.</div>';
         return;
       }
-      var max = 50;
+
+      // Apply Instagram-style grid layout
+      container.className = "grid grid-cols-3 gap-2 p-2";
+
+      var max = parseInt(localStorage.getItem("SMG_SET_HISTORY_LIMIT"), 10) || 50;
       var n = Math.min(rows.length, max);
-      for (var i = 0; i < n; i++) {
-        container.innerHTML += renderPhotoItem(rows[i]);
+
+      // Build arrays for lightbox group
+      historyUrls = [];
+      historyIds = [];
+      for (var j = 0; j < n; j++) {
+        historyUrls.push("https://lh3.googleusercontent.com/d/" + rows[j][1] + "=s0");
+        historyIds.push(rows[j][1]);
       }
+
+      var html = "";
+      for (var i = 0; i < n; i++) {
+        html += renderHistoryGridItem(rows[i], i);
+      }
+      container.innerHTML = html;
     });
   }
 
@@ -2497,10 +2444,11 @@ mid.appendChild(topRow);
   }
 
   function bindUi() {
-    // bottom nav (3 icon)
+    // bottom nav (4 icon)
     on($("nav-form-icon"), "click", function () { focusAddPO(); });
     on($("nav-data-icon"), "click", function () { navigate("data"); });
     on($("nav-search-icon"), "click", function () { navigate("search"); });
+    on($("nav-settings-icon"), "click", function () { navigate("settings"); });
 // overlay buttons
     on($("ovX"), "click", function () { ovClose(false); });
     on($("ovCancel"), "click", function () { ovClose(false); });
@@ -2550,6 +2498,7 @@ mid.appendChild(topRow);
       var k = e && e.key ? e.key : "";
       if (k === "Enter") { try { e.preventDefault(); } catch (x) {} doSearch(); }
     });
+    on($("search-input"), "blur", function () { normalizeSearchInput(); });
 
     on($("btn-search-clear"), "click", function () {
       var qEl = $("search-input");
@@ -2562,6 +2511,13 @@ mid.appendChild(topRow);
     on($("search-filter-all"), "click", function () { setSearchFilter("all"); });
     on($("search-filter-git"), "click", function () { setSearchFilter("git"); });
     on($("search-filter-foto"), "click", function () { setSearchFilter("foto"); });
+
+    // search mode buttons
+    on($("search-mode-std"), "click", function () { setSearchPOMode("std", true); });
+    on($("search-mode-SL3"), "click", function () { setSearchPOMode("SL3", true); });
+    on($("search-mode-SRG"), "click", function () { setSearchPOMode("SRG", true); });
+    on($("search-mode-PML"), "click", function () { setSearchPOMode("PML", true); });
+    on($("search-mode-BYS"), "click", function () { setSearchPOMode("BYS", true); });
 
     // event delegation: toggle detail blocks inside search results
     var sr = $("search-results");
@@ -2582,12 +2538,148 @@ mid.appendChild(topRow);
         }
       });
     }
+
+    // settings buttons
+    on($("btn-save-settings"), "click", saveSettingsFromUI);
+    on($("btn-reset-settings"), "click", resetSettingsToDefault);
+
+    var themeSelect = $("set-app-theme");
+    if (themeSelect) {
+      on(themeSelect, "change", function () {
+        applyTheme(themeSelect.value);
+      });
+    }
+  }
+
+  // =============================
+  // DYNAMIC CONFIGURATION/SETTINGS HELPERS
+  // =============================
+  function loadSettingsToUI() {
+    var gasUrlEl = $("set-gas-url");
+    var apiKeyEl = $("set-api-key");
+    var qualityEl = $("set-comp-quality");
+    var widthEl = $("set-max-width");
+    var targetKbEl = $("set-target-kb");
+    var armedEl = $("set-upload-armed");
+    var limitEl = $("set-history-limit");
+    var themeEl = $("set-app-theme");
+
+    if (gasUrlEl) gasUrlEl.value = GAS_API_URL || "";
+    if (apiKeyEl) apiKeyEl.value = API_KEY || "";
+    if (qualityEl) qualityEl.value = JPEG_QUALITY_START;
+    if (widthEl) widthEl.value = MAX_WIDTH;
+    if (targetKbEl) targetKbEl.value = TARGET_KB;
+    if (armedEl) armedEl.checked = !!uploadArmed;
+    if (limitEl) limitEl.value = String(HISTORY_LIMIT);
+    if (themeEl) themeEl.value = APP_THEME;
+  }
+
+  function saveSettingsFromUI() {
+    var gasUrlEl = $("set-gas-url");
+    var apiKeyEl = $("set-api-key");
+    var qualityEl = $("set-comp-quality");
+    var widthEl = $("set-max-width");
+    var targetKbEl = $("set-target-kb");
+    var armedEl = $("set-upload-armed");
+    var limitEl = $("set-history-limit");
+    var themeEl = $("set-app-theme");
+
+    if (gasUrlEl) {
+      GAS_API_URL = (gasUrlEl.value || "").trim();
+      localStorage.setItem("SMG_SET_GAS_URL", GAS_API_URL);
+    }
+    if (apiKeyEl) {
+      API_KEY = (apiKeyEl.value || "").trim();
+      localStorage.setItem("SMG_SET_API_KEY", API_KEY);
+    }
+    if (qualityEl) {
+      var q = parseFloat(qualityEl.value);
+      if (!isNaN(q) && q >= 0.1 && q <= 1.0) {
+        JPEG_QUALITY_START = q;
+        localStorage.setItem("SMG_SET_QUALITY_START", String(q));
+      }
+    }
+    if (widthEl) {
+      var w = parseInt(widthEl.value, 10);
+      if (!isNaN(w) && w >= 300 && w <= 3000) {
+        MAX_WIDTH = w;
+        localStorage.setItem("SMG_SET_MAX_WIDTH", String(w));
+      }
+    }
+    if (targetKbEl) {
+      var tk = parseInt(targetKbEl.value, 10);
+      if (!isNaN(tk) && tk >= 10 && tk <= 1000) {
+        TARGET_KB = tk;
+        localStorage.setItem("SMG_SET_TARGET_KB", String(tk));
+      }
+    }
+    if (armedEl) {
+      uploadArmed = !!armedEl.checked;
+      persistSnapshotNow();
+    }
+    if (limitEl) {
+      var lim = parseInt(limitEl.value, 10);
+      if (!isNaN(lim)) {
+        HISTORY_LIMIT = lim;
+        localStorage.setItem("SMG_SET_HISTORY_LIMIT", String(lim));
+      }
+    }
+    if (themeEl) {
+      APP_THEME = themeEl.value || "default";
+      localStorage.setItem("SMG_SET_APP_THEME", APP_THEME);
+      applyTheme(APP_THEME);
+    }
+
+    try {
+      if (COMP.setConfig) {
+        COMP.setConfig({
+          maxWidth: MAX_WIDTH,
+          qualityStart: JPEG_QUALITY_START,
+          targetKb: TARGET_KB
+        });
+      }
+    } catch (e) {}
+
+    showToast("success", "Pengaturan disimpan!");
+  }
+
+  function resetSettingsToDefault() {
+    localStorage.removeItem("SMG_SET_GAS_URL");
+    localStorage.removeItem("SMG_SET_API_KEY");
+    localStorage.removeItem("SMG_SET_QUALITY_START");
+    localStorage.removeItem("SMG_SET_MAX_WIDTH");
+    localStorage.removeItem("SMG_SET_TARGET_KB");
+    localStorage.removeItem("SMG_SET_HISTORY_LIMIT");
+    localStorage.removeItem("SMG_SET_APP_THEME");
+
+    GAS_API_URL = (CFG.GAS_API_URL || "").trim();
+    API_KEY = (CFG.API_KEY || "").trim();
+    MAX_WIDTH = 1000;
+    JPEG_QUALITY_START = 0.9;
+    TARGET_KB = 60;
+    HISTORY_LIMIT = 50;
+    APP_THEME = "default";
+    applyTheme("default");
+
+    try {
+      if (COMP.setConfig) {
+        COMP.setConfig({
+          maxWidth: MAX_WIDTH,
+          qualityStart: JPEG_QUALITY_START,
+          targetKb: TARGET_KB
+        });
+      }
+    } catch (e) {}
+
+    loadSettingsToUI();
+    showToast("success", "Kembali ke pengaturan bawaan!");
   }
 
   // =============================
   // INIT ON LOAD
   // =============================
   window.addEventListener("load", function () {
+    applyTheme(APP_THEME);
     previewSkeletonEl = $("preview-skeleton");
 
     bindUi();
@@ -2609,6 +2701,7 @@ mid.appendChild(topRow);
 
     // Set default mode styles
     setPOMode("std", false);
+    setSearchPOMode("std", false);
 
     restoreSnapshot(function (restored) {
       if (!restored) {

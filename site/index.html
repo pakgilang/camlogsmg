@@ -9,7 +9,7 @@
 
   <!-- PWA -->
   <link rel="manifest" href="/manifest.webmanifest" />
-  <meta name="theme-color" content="#1d4ed8" />
+  <meta name="theme-color" content="#f8fafc" />
 
   <!-- iOS PWA niceties (opsional, ringan) -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -28,32 +28,188 @@
   >
 
   <style>
-    :root { --safe-top: env(safe-area-inset-top, 0px); }
+    :root { 
+      --safe-top: env(safe-area-inset-top, 0px); 
+      --bg-canvas: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-secondary: #f8fafc;
+      --border-color: rgba(226, 232, 240, 0.8);
+      --text-ink: #1e293b;
+      --text-muted: #64748b;
+      --color-brand: #4f46e5;
+      --color-brand-hover: #4338ca;
+      --color-brand-soft: #eeebff;
+      --text-on-brand: #ffffff;
+      --radius-card: 1rem;
+      --radius-btn: 0.75rem;
+      --shadow-style: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1);
+      --font-family: 'Inter', sans-serif;
+      --letter-spacing: normal;
+    }
+
+    body.theme-apple {
+      --bg-canvas: #f5f5f7;
+      --bg-surface: #ffffff;
+      --bg-secondary: #fafafc;
+      --border-color: #e0e0e0;
+      --text-ink: #1d1d1f;
+      --text-muted: #86868b;
+      --color-brand: #0066cc;
+      --color-brand-hover: #0044b3;
+      --color-brand-soft: #f2f2f7;
+      --text-on-brand: #ffffff;
+      --radius-card: 18px;
+      --radius-btn: 9999px;
+      --shadow-style: none;
+      --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+      --letter-spacing: -0.022em;
+    }
+
+    body.theme-supabase {
+      --bg-canvas: #121212;
+      --bg-surface: #1e1e1e;
+      --bg-secondary: #202020;
+      --border-color: #2e2e2e;
+      --text-ink: #ededed;
+      --text-muted: #8b8b8b;
+      --color-brand: #3ecf8e;
+      --color-brand-hover: #24b47e;
+      --color-brand-soft: #202020;
+      --text-on-brand: #171717;
+      --radius-card: 8px;
+      --radius-btn: 6px;
+      --shadow-style: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+      --font-family: ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --letter-spacing: normal;
+    }
+
+    body.theme-facebook {
+      --bg-canvas: #f0f2f5;
+      --bg-surface: #ffffff;
+      --bg-secondary: #f0f2f5;
+      --border-color: #ced0d4;
+      --text-ink: #050505;
+      --text-muted: #65676b;
+      --color-brand: #1877f2;
+      --color-brand-hover: #166fe5;
+      --color-brand-soft: #e7f3ff;
+      --text-on-brand: #ffffff;
+      --radius-card: 8px;
+      --radius-btn: 8px;
+      --shadow-style: 0 1px 2px rgba(0, 0, 0, 0.2);
+      --font-family: Segoe UI, Helvetica, Arial, sans-serif;
+      --letter-spacing: normal;
+    }
+
+    /* Override Rules */
     body {
-      font-family: 'Inter', sans-serif;
-      background: #f1f5f9;
+      background-color: var(--bg-canvas) !important;
+      color: var(--text-ink) !important;
+      font-family: var(--font-family) !important;
+      letter-spacing: var(--letter-spacing) !important;
+      transition: background-color 0.2s ease, color 0.2s ease;
       -webkit-tap-highlight-color: transparent;
     }
-    .scrollbar-hide::-webkit-scrollbar { display: none; }
-    .fade-in { animation: fadeIn .25s ease-in-out; }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(5px); }
-      to { opacity: 1; transform: translateY(0); }
+
+    .bg-white, .bg-white\/95 {
+      background-color: var(--bg-surface) !important;
     }
+
+    .bg-slate-50, .bg-slate-100, .bg-slate-50\/60 {
+      background-color: var(--bg-secondary) !important;
+    }
+
+    .rounded-2xl {
+      border-radius: var(--radius-card) !important;
+    }
+
+    .rounded-xl, button, input[type="text"], input[type="number"], select, textarea {
+      border-radius: var(--radius-btn) !important;
+    }
+
+    .border-slate-200\/80, .border-slate-200, .border-slate-100, .border-indigo-600, .border-rose-100, .border-rose-200, .divide-slate-100 > * {
+      border-color: var(--border-color) !important;
+    }
+
+    .shadow-sm, .shadow, .shadow-2xl {
+      box-shadow: var(--shadow-style) !important;
+    }
+
+    /* Text */
+    .text-slate-800, .text-slate-700, .text-slate-850, .text-slate-900, .text-slate-600 {
+      color: var(--text-ink) !important;
+    }
+
+    .text-slate-555 {
+      color: var(--text-ink) !important;
+    }
+
+    .text-slate-500, .text-slate-400, .text-slate-450, .text-slate-455 {
+      color: var(--text-muted) !important;
+    }
+
+    /* Brand Background Colors */
+    .bg-indigo-600, 
+    .bg-gradient-to-br.from-indigo-600.to-indigo-700,
+    .bg-gradient-to-tr.from-indigo-600.to-indigo-500,
+    .bg-gradient-to-r.from-emerald-600.to-teal-500,
+    #btn-save, #btn-camera, #btn-upload, #btn-search {
+      background: var(--color-brand) !important;
+      background-image: none !important;
+      color: var(--text-on-brand) !important;
+    }
+
+    .hover\:bg-indigo-700:hover, 
+    .hover\:from-indigo-550:hover,
+    .hover\:from-emerald-550:hover,
+    #btn-save:hover, #btn-camera:hover, #btn-upload:hover, #btn-search:hover {
+      background: var(--color-brand-hover) !important;
+      background-image: none !important;
+    }
+
+    /* Brand Text and Soft Backgrounds */
+    .text-indigo-650, .text-indigo-600, .text-indigo-700 {
+      color: var(--color-brand) !important;
+    }
+
+    .bg-indigo-50 {
+      background-color: var(--color-brand-soft) !important;
+    }
+
+    /* Specific visual tweaks for menus/navigation */
+    .fixed.bottom-0 {
+      background-color: var(--bg-surface) !important;
+      border-top-color: var(--border-color) !important;
+    }
+
+    .user-btn:hover {
+      background-color: var(--border-color) !important;
+      color: var(--text-ink) !important;
+    }
+
+    /* General styling adjustments */
     input, select, textarea { font-size: 14px !important; }
-    .btn-disabled { opacity: .45; pointer-events: none; }
+    .font-mono, input, select, textarea { font-feature-settings: "tnum"; }
+    .btn-disabled { opacity: .45; pointer-events: none; filter: grayscale(1); }
     .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom, 0px)); }
 
     /* modal/overlay base */
     .ov-hidden { display: none; }
 
     /* user popup buttons */
-    .user-btn{width:100%;text-align:left;padding:.5rem;font-size:12px;border-radius:.5rem}
-    .user-btn:hover{background:#f1f5f9}
+    .user-btn{width:100%;text-align:left;padding:.6rem 1rem;font-size:13px;border-radius:.75rem; transition: all 0.2s ease;}
+
+    /* Scrollbar hide helper */
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .fade-in { animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
 
-<body class="text-slate-800 pb-32 min-h-screen">
+<body class="text-slate-800 pb-32 min-h-screen bg-[#f8fafc]">
   <!-- SVG SPRITE -->
   <svg aria-hidden="true" class="hidden">
     <symbol id="ic-cubes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -168,41 +324,46 @@
     <symbol id="ic-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M9 18l6-6-6-6"/>
     </symbol>
+
+    <symbol id="ic-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </symbol>
   </svg>
 
   <!-- USER POPUP (HARUS DI SINI) -->
   <div id="user-popup"
        class="hidden fixed inset-0 bg-black/40 z-[9999]"
        onclick="this.classList.add('hidden')">
-    <div class="bg-white rounded-xl shadow-xl p-3 w-52 mx-auto mt-24"
+    <div class="bg-white border border-slate-200/80 rounded-2xl shadow-2xl p-3 w-52 mx-auto mt-24"
          onclick="event.stopPropagation()">
-      <div class="text-xs font-bold mb-2">Pilih User</div>
-      <button onclick="setUser('GILANG')" class="user-btn">GILANG</button>
-      <button onclick="setUser('DODY')" class="user-btn">DODY</button>
-      <button onclick="setUser('VALENT')" class="user-btn">VALENT</button>
-      <button onclick="setUser('NIKE')" class="user-btn">NIKE</button>
-      <button onclick="setUser('COMDIV')" class="user-btn">COMDIV</button>
-      <hr class="my-2">
-      <button onclick="setUser('')" class="user-btn text-red-600">Kosongkan</button>
+      <div class="text-xs font-bold text-slate-400 mb-2 px-2 uppercase tracking-wide">Pilih User</div>
+      <button onclick="setUser('GILANG')" class="user-btn text-slate-700">GILANG</button>
+      <button onclick="setUser('DODY')" class="user-btn text-slate-700">DODY</button>
+      <button onclick="setUser('VALENT')" class="user-btn text-slate-700">VALENT</button>
+      <button onclick="setUser('NIKE')" class="user-btn text-slate-700">NIKE</button>
+      <button onclick="setUser('COMDIV')" class="user-btn text-slate-700">COMDIV</button>
+      <hr class="my-2 border-slate-100">
+      <button onclick="setUser('')" class="user-btn text-red-500 hover:text-red-650">Kosongkan</button>
     </div>
   </div>
 
   <div id="app-root">
     <!-- HEADER: hanya status online + pilih user -->
-    <div class="bg-blue-700 text-white shadow-md sticky top-0 z-50">
+    <div class="bg-white/95 border-b border-slate-200/80 text-slate-850 shadow-sm sticky top-0 z-50 backdrop-blur-md">
       <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
         <div class="flex items-center gap-2.5">
           <img
             src="https://lh3.googleusercontent.com/d/1-pIifZnCS3_vuBBnXMgYi2S_cMVFamUN=s60-rw"
             alt="Logo"
-            class="w-7 h-7 rounded-md bg-white p-0.5 object-contain ring-1 ring-white/40"
+            class="w-7 h-7 rounded-md bg-white p-0.5 object-contain ring-1 ring-slate-200"
             loading="eager"
             referrerpolicy="no-referrer"
           />
 
           <div class="leading-tight">
-            <h1 class="font-bold text-base tracking-wide">Logistik SMG</h1>
-            <p id="diag-trigger" class="text-[10px] text-blue-200 font-mono opacity-90">
+            <h1 class="font-bold text-base tracking-wide text-slate-800">Logistik SMG</h1>
+            <p id="diag-trigger" class="text-[10px] text-slate-400 font-mono opacity-90 cursor-pointer">
               Mode : Edit Gambar
             </p>
           </div>
@@ -210,14 +371,15 @@
 
         <button
           id="user-trigger"
-          class="flex items-center gap-2 px-3 py-1.5 bg-blue-600 rounded-xl active:scale-95"
+          class="flex items-center gap-2 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl active:scale-95 transition"
           type="button"
           onclick="document.getElementById('user-popup').classList.toggle('hidden')"
         >
           <span id="net-dot" class="w-2 h-2 rounded-full bg-slate-400"></span>
-          <span id="active-user" class="text-xs font-bold">PILIH USER</span>
+          <span id="active-user" class="text-xs font-bold text-slate-600">PILIH USER</span>
         </button>
       </div>
+    </div>
     </div>
 
     <div class="max-w-md mx-auto mt-2 px-3">
@@ -226,14 +388,14 @@
       <div id="view-form" class="fade-in">
 
         <!-- DRAFT CARD -->
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
+        <div class="bg-white border border-slate-200/80 p-5 rounded-2xl shadow-sm space-y-4">
 
           <!-- PO ROW -->
           <div id="po-row" class="flex gap-2">
             <div class="flex-1 relative">
               <label
                 id="lbl-po"
-                class="block text-[10px] font-bold text-slate-500 uppercase
+                class="block text-[10px] font-bold text-slate-400 uppercase
                        tracking-wider mb-1"
               >
                 PO Number
@@ -242,9 +404,9 @@
               <input
                 type="text"
                 id="inp-po"
-                class="w-full pl-3 pr-10 py-3 bg-slate-50 border border-slate-200
-                       rounded-lg text-sm font-mono focus:outline-none
-                       focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                class="w-full pl-3 pr-10 py-3 bg-slate-50 border border-slate-200/80
+                       rounded-xl text-sm font-mono text-slate-800 placeholder-slate-400 focus:outline-none
+                       focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white transition-all"
                 placeholder="Scan/Ketik..."
                 inputmode="numeric"
                 autocomplete="off"
@@ -254,7 +416,7 @@
                 id="btn-plus-meta"
                 type="button"
                 class="absolute right-1 top-6 w-8 h-8 flex items-center justify-center
-                       text-blue-500 hover:text-blue-700 active:scale-90 transition"
+                       text-indigo-650 hover:text-indigo-700 active:scale-90 transition"
               >
                 <svg class="w-6 h-6">
                   <use href="#ic-plus-circle"></use>
@@ -266,7 +428,7 @@
           <!-- MODE NORMALISASI -->
           <div id="po-mode-panel">
             <div class="flex justify-between items-center mb-1">
-              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              <span class="text-[10px] font-bold text-slate-450 uppercase tracking-wider">
                 Mode Normalisasi
               </span>
               <span id="mode-hint" class="text-[10px] text-slate-400">
@@ -274,7 +436,7 @@
               </span>
             </div>
 
-            <div class="bg-slate-50 border border-slate-200 rounded-xl p-1 flex gap-1">
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-1 flex gap-1">
               <button
                 id="mode-std"
                 class="flex-1 py-2 rounded-lg text-[11px] font-bold
@@ -334,7 +496,7 @@
             <!-- GIT NUMBER -->
             <div>
               <label
-                class="block text-[9px] font-bold text-slate-400 mb-1"
+                class="block text-[9px] font-bold text-slate-455 mb-1"
                 id="lbl-git"
               >
                 GIT NUMBER (Opsional)
@@ -345,8 +507,8 @@
                 id="inp-git"
                 placeholder="GTxxxxxxxxxxxx..."
                 class="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-lg
-                       text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500
-                       focus:bg-white"
+                       text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20
+                       focus:border-indigo-500 focus:bg-white transition-all"
                 autocomplete="off"
               >
             </div>
@@ -354,7 +516,7 @@
             <!-- PIC -->
             <div>
               <label
-                class="block text-[9px] font-bold text-slate-400 mb-1"
+                class="block text-[9px] font-bold text-slate-455 mb-1"
                 id="lbl-pic"
               >
                 PIC PO (Opsional)
@@ -363,8 +525,8 @@
               <select
                 id="inp-pic"
                 class="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-lg
-                       text-xs focus:outline-none focus:ring-2 focus:ring-blue-500
-                       focus:bg-white"
+                       text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20
+                       focus:border-indigo-500 focus:bg-white transition-all"
               >
                 <option value="">Pilih PIC...</option>
                 <option value="ANTONIUS.TK">ANTONIUS.TK</option>
@@ -384,7 +546,7 @@
             <!-- Keterangan -->
             <div class="col-span-2">
               <label
-                class="block text-[9px] font-bold text-slate-400 mb-1"
+                class="block text-[9px] font-bold text-slate-455 mb-1"
                 id="lbl-ket"
               >
                 Keterangan (Opsional)
@@ -395,8 +557,8 @@
                 id="inp-ket"
                 placeholder="..."
                 class="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-lg
-                       text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500
-                       focus:bg-white"
+                       text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20
+                       focus:border-indigo-500 focus:bg-white transition-all"
               >
             </div>
           </div>
@@ -413,20 +575,20 @@
           <!-- FOTO AREA -->
           <div>
             <div class="flex justify-between items-end mb-1.5">
-              <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              <span class="text-[11px] font-bold text-slate-455 uppercase tracking-wider">
                 Foto (Max 10)
               </span>
 
               <div class="flex items-center gap-2">
                 <span
                   id="photo-total-kb"
-                  class="text-[10px] font-bold text-slate-500 bg-slate-100
+                  class="text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200
                          px-2 py-0.5 rounded-full hidden"
                 >0 KB</span>
 
                 <span
                   id="photo-count"
-                  class="text-[10px] font-bold text-blue-600 bg-blue-50
+                  class="text-[10px] font-bold text-indigo-650 bg-indigo-50 border border-indigo-100
                          px-2 py-0.5 rounded-full hidden"
                 >0</span>
               </div>
@@ -437,9 +599,9 @@
                 <div id="preview-strip" class="flex gap-2">
                   <div
                     id="preview-skeleton"
-                    class="w-24 h-24 rounded-xl border-2 border-dashed border-slate-300
+                    class="w-24 h-24 rounded-xl border-2 border-dashed border-slate-200
                            bg-slate-50 flex flex-col items-center justify-center
-                           text-slate-300"
+                           text-slate-400"
                   >
                     <svg class="w-5 h-5"><use href="#ic-image"></use></svg>
                     <span class="text-[10px] mt-1">Belum ada</span>
@@ -449,9 +611,7 @@
 
               <button
                 id="btn-camera"
-                class="w-24 h-24 rounded-xl bg-blue-600 text-white shadow
-                       flex flex-col items-center justify-center active:scale-95
-                       transition hover:bg-blue-700"
+                class="w-24 h-24 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-700 hover:from-indigo-550 hover:to-indigo-650 text-white shadow shadow-indigo-600/15 flex flex-col items-center justify-center active:scale-95 transition-all duration-200"
                 type="button"
               >
                 <svg class="w-6 h-6"><use href="#ic-camera"></use></svg>
@@ -477,9 +637,7 @@
           <div class="grid grid-cols-2 gap-2 pt-1">
             <button
               id="btn-save"
-              class="btn-disabled bg-emerald-500 hover:bg-emerald-600 text-white
-                     font-bold text-sm py-3 rounded-xl shadow flex items-center
-                     justify-center gap-2 active:scale-95 transition"
+              class="btn-disabled bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-550 hover:to-teal-450 text-white font-bold text-sm py-3 rounded-xl shadow active:scale-95 transition flex items-center justify-center gap-1.5"
               type="button"
             >
               <svg class="w-5 h-5"><use href="#ic-save"></use></svg>
@@ -488,15 +646,13 @@
 
             <button
               id="btn-addpo"
-              class="bg-[#f1f5f9] hover:bg-[#eeeeee] text-slate-700
-                     font-bold text-sm py-3 rounded-xl shadow-sm border
-                     border-slate-200 flex items-center justify-center gap-2
-                     active:scale-95 transition"
+              class="bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-bold text-sm py-3 rounded-xl shadow-sm border border-slate-200/80 flex items-center justify-center gap-2 active:scale-95 transition"
               type="button"
             >
               <svg class="w-5 h-5"><use href="#ic-plus"></use></svg>
               <span>ADD NO.PO</span>
             </button>
+          </div>
           
           <!-- EDIT MODE BANNER -->
           <div id="edit-banner"
@@ -505,8 +661,8 @@
             <div class="text-[11px] font-bold text-amber-800 truncate" id="edit-label">EDIT</div>
             <button id="btn-cancel-edit"
                     type="button"
-                    class="text-[10px] font-extrabold text-red-700 bg-white
-                           border border-red-200 px-2 py-1 rounded-lg active:scale-95">
+                    class="text-[10px] font-extrabold text-rose-600 bg-white
+                           border border-rose-200 px-2 py-1 rounded-lg active:scale-95 hover:bg-rose-50">
               <span class="inline-flex items-center gap-1">
                 <svg class="w-4 h-4"><use href="#ic-x"></use></svg>
                 <span>Batal</span>
@@ -514,9 +670,7 @@
             </button>
           </div>
 
-</div>
-
-          <div class="text-[10px] text-slate-400">
+          <div class="text-[10px] text-slate-500 font-medium">
             * SIMPAN = masukkan PO ke daftar. ADD PO = fokus ke input PO NUMBER.
           </div>
 
@@ -533,17 +687,17 @@
         <!-- LIST PO -->
         <div class="mt-3 mb-28">
           <div class="flex justify-between items-center px-1 mb-1.5">
-            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            <span class="text-[11px] font-bold text-slate-455 uppercase tracking-wider">
               Daftar PO Tersimpan
             </span>
-            <div class="text-[10px] text-slate-400 font-semibold">
+            <div class="text-[10px] text-slate-500 font-semibold">
               <span id="stat-po">0 PO</span> • <span id="stat-foto">0 foto</span>
             </div>
 
             <button
               id="btn-reset-all"
-              class="text-[10px] font-bold text-red-600 bg-red-50
-                     border border-red-100 px-2 py-1 rounded-lg active:scale-95"
+              class="text-[10px] font-bold text-rose-600 bg-rose-50
+                     border border-rose-100 px-2 py-1 rounded-lg active:scale-95 hover:bg-rose-100/60"
               type="button"
             >
               <span class="inline-flex items-center gap-1">
@@ -557,8 +711,8 @@
 
           <div
             id="po-empty"
-            class="mt-2 bg-white border border-slate-200 rounded-xl
-                   p-4 text-center text-xs text-slate-400"
+            class="mt-2 bg-white border border-slate-200/80 rounded-xl
+                   p-4 text-center text-xs text-slate-550 shadow-sm"
           >
             Belum ada FOTO disimpan. Isi → foto → klik <b>SIMPAN</b> / <b>ADD PO</b>.
           </div>
@@ -567,17 +721,17 @@
 
       <!-- VIEW: DATA -->
       <div id="view-data" class="hidden fade-in">
-        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden mb-20">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden mb-20">
           <div
-            class="bg-slate-50 px-3 py-2 border-b border-slate-100
+            class="bg-slate-50/60 px-3 py-2 border-b border-slate-200/60
                    flex justify-between items-center"
           >
-            <span class="text-xs font-bold text-slate-600">Riwayat Terkini</span>
+            <span class="text-xs font-bold text-slate-700">Riwayat Terkini</span>
 
             <button
               id="btn-refresh"
               class="text-[10px] bg-white border border-slate-200
-                     px-2 py-1 rounded shadow-sm text-blue-600 active:scale-95"
+                     px-2 py-1 rounded shadow-sm text-indigo-650 hover:bg-slate-50 active:scale-95 transition"
               type="button"
             >
               <span class="inline-flex items-center gap-1">
@@ -587,33 +741,84 @@
             </button>
           </div>
 
-          <div id="history-list" class="divide-y divide-slate-100"></div>
+          <div id="history-list"></div>
         </div>
       </div>
 
       <!-- VIEW: SEARCH -->
       <div id="view-search" class="hidden fade-in">
-        <div class="bg-white p-3 rounded-lg shadow-sm border border-slate-200">
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200/80">
           <div class="flex gap-2">
             <input
               type="text"
               id="search-input"
-              class="flex-1 bg-slate-50 border border-slate-200 rounded-lg
-                     px-3 py-2 text-sm focus:outline-none focus:ring-1
-                     focus:ring-blue-500"
+              class="flex-1 bg-slate-50 border border-slate-200/80 rounded-xl
+                     px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2
+                     focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white transition-all"
               placeholder="Cari No. PO / 4 digit (auto format)"
               inputmode="text"
             >
 
             <button
               id="btn-search"
-              class="bg-blue-600 text-white px-4 rounded-lg
-                     text-sm font-bold shadow-sm active:scale-95"
+              class="bg-indigo-600 text-white px-4 rounded-xl
+                     text-sm font-bold shadow active:scale-95 hover:bg-indigo-700 transition"
               type="button"
               title="Cari (Enter)"
             >
               <svg class="w-5 h-5"><use href="#ic-search"></use></svg>
             </button>
+          </div>
+
+          <!-- MODE NORMALISASI PENCARIAN -->
+          <div id="search-mode-panel" class="mt-3">
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-[10px] font-bold text-slate-450 uppercase tracking-wider">
+                Mode Normalisasi Cari
+              </span>
+            </div>
+
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-1 flex gap-1">
+              <button
+                id="search-mode-std"
+                class="flex-1 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2"
+                type="button"
+              >
+                <span>CPJF</span>
+              </button>
+
+              <button
+                id="search-mode-SL3"
+                class="flex-1 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2"
+                type="button"
+              >
+                <span>SL3</span>
+              </button>
+
+              <button
+                id="search-mode-SRG"
+                class="flex-1 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2"
+                type="button"
+              >
+                <span>SRG</span>
+              </button>
+
+              <button
+                id="search-mode-PML"
+                class="flex-1 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2"
+                type="button"
+              >
+                <span>PML</span>
+              </button>
+
+              <button
+                id="search-mode-BYS"
+                class="flex-1 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2"
+                type="button"
+              >
+                <span>BYS/KBM</span>
+              </button>
+            </div>
           </div>
 
           <div class="mt-2 flex items-center justify-between gap-2">
@@ -622,8 +827,8 @@
             </div>
             <button
               id="btn-search-clear"
-              class="text-[11px] font-bold text-slate-500 hover:text-slate-700 bg-slate-100
-                     px-2 py-1 rounded-lg active:scale-95"
+              class="text-[11px] font-bold text-slate-555 hover:text-slate-700 bg-slate-100
+                     px-2 py-1 rounded-lg active:scale-95 transition"
               type="button"
               title="Bersihkan"
             >
@@ -635,11 +840,11 @@
             <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Filter</div>
             <div class="flex items-center gap-1">
               <button id="search-filter-all" type="button"
-                class="px-2 py-1 rounded-lg text-[11px] font-bold border border-slate-200 bg-white hover:bg-slate-50 active:scale-95">Semua</button>
+                class="px-3 py-1.5 rounded-lg text-[11px] font-bold border border-slate-200 bg-white hover:bg-slate-50 active:scale-95 text-slate-555 transition">Semua</button>
               <button id="search-filter-git" type="button"
-                class="px-2 py-1 rounded-lg text-[11px] font-bold border border-slate-200 bg-white hover:bg-slate-50 active:scale-95">GIT</button>
+                class="px-3 py-1.5 rounded-lg text-[11px] font-bold border border-slate-200 bg-white hover:bg-slate-50 active:scale-95 text-slate-555 transition">GIT</button>
               <button id="search-filter-foto" type="button"
-                class="px-2 py-1 rounded-lg text-[11px] font-bold border border-slate-200 bg-white hover:bg-slate-50 active:scale-95">Foto</button>
+                class="px-3 py-1.5 rounded-lg text-[11px] font-bold border border-slate-200 bg-white hover:bg-slate-50 active:scale-95 text-slate-555 transition">Foto</button>
             </div>
           </div>
         </div>
@@ -647,53 +852,153 @@
         <div id="search-results" class="mt-3 space-y-2 pb-20"></div>
       </div>
 
+      <!-- VIEW: SETTINGS -->
+      <div id="view-settings" class="hidden fade-in">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-4 mb-20">
+          <div class="flex items-center gap-2 border-b border-slate-100 pb-2">
+            <div class="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center">
+              <svg class="w-5 h-5 text-indigo-600"><use href="#ic-settings"></use></svg>
+            </div>
+            <div>
+              <h2 class="text-sm font-extrabold text-slate-800">Pengaturan PWA</h2>
+              <p class="text-[10px] text-slate-400">Konfigurasi dinamis disimpan di lokal</p>
+            </div>
+          </div>
+          
+          <!-- GAS API URL -->
+          <div class="space-y-1">
+            <label class="block text-[10px] font-bold text-slate-450 uppercase tracking-wider">GAS API URL</label>
+            <input type="text" id="set-gas-url" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-mono text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white" placeholder="https://script.google.com/macros/s/.../exec">
+          </div>
+
+          <!-- API KEY -->
+          <div class="space-y-1">
+            <label class="block text-[10px] font-bold text-slate-450 uppercase tracking-wider">API KEY</label>
+            <input type="text" id="set-api-key" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-mono text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white" placeholder="ikangabus">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <!-- COMPRESSION QUALITY -->
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-slate-450 uppercase tracking-wider">Kualitas Awal (0.1 - 1.0)</label>
+              <input type="number" id="set-comp-quality" min="0.1" max="1.0" step="0.05" class="w-full px-3 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-mono text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white">
+            </div>
+            
+            <!-- MAX WIDTH -->
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-slate-455 uppercase tracking-wider">Lebar Maks (px)</label>
+              <input type="number" id="set-max-width" min="300" max="3000" step="100" class="w-full px-3 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-mono text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <!-- TARGET KB -->
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-slate-450 uppercase tracking-wider">Target Ukuran (KB)</label>
+              <input type="number" id="set-target-kb" min="10" max="1000" step="5" class="w-full px-3 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-mono text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white">
+            </div>
+
+            <!-- AUTO RETRY TOGGLE -->
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-slate-455 uppercase tracking-wider">Auto Upload Armed</label>
+              <div class="flex items-center h-9">
+                <input type="checkbox" id="set-upload-armed" class="w-4 h-4 text-indigo-650 border-slate-300 rounded focus:ring-indigo-500">
+                <span class="text-xs text-slate-500 ml-2 font-medium">Armed saat Online</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <!-- LIMIT RIWAYAT -->
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-slate-450 uppercase tracking-wider">Limit Riwayat</label>
+              <select id="set-history-limit" class="w-full px-3 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white transition-all">
+                <option value="10">10 Item</option>
+                <option value="25">25 Item</option>
+                <option value="50">50 Item</option>
+                <option value="100">100 Item</option>
+                <option value="200">200 Item</option>
+                <option value="500">500 Item</option>
+              </select>
+            </div>
+
+            <!-- GAYA VISUAL (TEMA) -->
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-slate-450 uppercase tracking-wider">Gaya Visual (Tema)</label>
+              <select id="set-app-theme" class="w-full px-3 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white transition-all">
+                <option value="default">Default (Slate & Indigo)</option>
+                <option value="apple">Apple Style (Pure Light)</option>
+                <option value="supabase">Supabase Style (Emerald Dark)</option>
+                <option value="facebook">Facebook Style (Social Blue)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-100 flex gap-2">
+            <button id="btn-save-settings" type="button" class="flex-1 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-550 hover:to-teal-450 text-white font-extrabold text-xs py-3 rounded-xl shadow active:scale-95 transition">SIMPAN PENGATURAN</button>
+            <button id="btn-reset-settings" type="button" class="px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-3 rounded-xl border border-slate-200/80 active:scale-95 transition">RESET DEFAULT</button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
   <!-- BOTTOM BAR: 3 icon + upload -->
-  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 safe-bottom">
+  <div class="fixed bottom-0 left-0 right-0 bg-[#f8fafc]/90 backdrop-blur-md border-t border-slate-200/80 z-50 safe-bottom">
     <div class="max-w-md mx-auto px-3 py-3 flex items-center justify-between">
       <!-- 3 ICON MENU (highlight via app.js) -->
       <div class="flex items-center gap-1">
         <button
           id="nav-form-icon"
-          class="w-11 h-11 rounded-xl border border-slate-200 bg-white hover:bg-slate-50
-                 flex items-center justify-center active:scale-95 transition"
+          class="w-11 h-11 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100
+                 flex items-center justify-center active:scale-95 transition duration-200"
           type="button"
           aria-label="Tambah Gambar"
           title="Tambah Gambar"
         >
-          <svg class="w-5 h-5 text-blue-600"><use href="#ic-camera"></use></svg>
+          <svg class="w-5 h-5 text-slate-500"><use href="#ic-camera"></use></svg>
         </button>
 
         <button
           id="nav-data-icon"
-          class="w-11 h-11 rounded-xl border border-slate-200 bg-white hover:bg-slate-50
-                 flex items-center justify-center active:scale-95 transition"
+          class="w-11 h-11 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100
+                 flex items-center justify-center active:scale-95 transition duration-200"
           type="button"
           aria-label="Riwayat"
           title="Riwayat"
         >
-          <svg class="w-5 h-5 text-blue-600"><use href="#ic-history"></use></svg>
+          <svg class="w-5 h-5 text-slate-500"><use href="#ic-history"></use></svg>
         </button>
 
         <button
           id="nav-search-icon"
-          class="w-11 h-11 rounded-xl border border-slate-200 bg-white hover:bg-slate-50
-                 flex items-center justify-center active:scale-95 transition"
+          class="w-11 h-11 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100
+                 flex items-center justify-center active:scale-95 transition duration-200"
           type="button"
           aria-label="Cari Foto"
           title="Cari Foto"
         >
-          <svg class="w-5 h-5 text-blue-600"><use href="#ic-search"></use></svg>
+          <svg class="w-5 h-5 text-slate-500"><use href="#ic-search"></use></svg>
+        </button>
+
+        <button
+          id="nav-settings-icon"
+          class="w-11 h-11 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100
+                 flex items-center justify-center active:scale-95 transition duration-200"
+          type="button"
+          aria-label="Pengaturan"
+          title="Pengaturan"
+        >
+          <svg class="w-5 h-5 text-slate-500"><use href="#ic-settings"></use></svg>
         </button>
       </div>
 
       <button
         id="btn-upload"
-        class="btn-disabled w-40 bg-indigo-600 hover:bg-indigo-700 text-white
-               font-bold text-sm py-3 rounded-xl shadow flex items-center
-               justify-center gap-2 active:scale-95 transition"
+        class="btn-disabled w-32 bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white
+               font-bold text-xs py-3 rounded-xl shadow shadow-indigo-600/15 flex items-center
+               justify-center gap-1.5 active:scale-95 transition-all duration-200"
         type="button"
       >
         <svg class="w-5 h-5"><use href="#ic-upload"></use></svg>
@@ -703,22 +1008,22 @@
   </div>
 
   <!-- TYPE PICKER MODAL (popup pilihan jenis sebelum kamera) -->
-  <div id="type-modal" class="hidden fixed inset-0 z-[85] bg-black/50">
+  <div id="type-modal" class="hidden fixed inset-0 z-[85] bg-black/40">
     <div class="absolute inset-0" id="type-modal-backdrop"></div>
 
     <div class="relative h-full w-full flex items-center justify-center p-3">
-      <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden fade-in">
+      <div class="w-full max-w-md bg-white border border-slate-200/85 rounded-3xl shadow-2xl overflow-hidden p-1 fade-in">
         <div class="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
-          <div class="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
-            <svg class="w-5 h-5 text-blue-700"><use href="#ic-camera"></use></svg>
+          <div class="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center">
+            <svg class="w-5 h-5 text-indigo-600"><use href="#ic-camera"></use></svg>
           </div>
           <div class="flex-1 min-w-0">
             <div class="text-sm font-extrabold text-slate-800 truncate">Pilih Jenis Foto</div>
-            <div class="text-[11px] text-slate-400 truncate">Setelah pilih, kamera akan terbuka</div>
+            <div class="text-[11px] text-slate-450 truncate">Setelah pilih, kamera akan terbuka</div>
           </div>
           <button
             id="btn-type-close"
-            class="w-9 h-9 rounded-xl hover:bg-slate-50 active:scale-95 flex items-center justify-center"
+            class="w-9 h-9 rounded-xl hover:bg-slate-100 active:scale-95 flex items-center justify-center"
             type="button"
           >
             <svg class="w-5 h-5 text-slate-500"><use href="#ic-x"></use></svg>
@@ -728,24 +1033,24 @@
         <div class="px-4 py-4">
           <div class="grid grid-cols-3 gap-2">
             <button id="btn-type-sj"
-              class="w-full aspect-square rounded-xl bg-amber-500 hover:bg-amber-600
+              class="w-full aspect-square rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-600 hover:shadow-lg hover:shadow-amber-500/15
                      text-white font-extrabold text-sm shadow
                      flex items-center justify-center
-                     active:scale-95 transition"
+                     active:scale-95 transition duration-250"
               type="button">SJ</button>
 
             <button id="btn-type-koli"
-              class="w-full aspect-square rounded-xl bg-emerald-600 hover:bg-emerald-700
+              class="w-full aspect-square rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-500 hover:shadow-lg hover:shadow-emerald-550/15
                      text-white font-extrabold text-sm shadow
                      flex items-center justify-center
-                     active:scale-95 transition"
+                     active:scale-95 transition duration-250"
               type="button">KOLI</button>
 
             <button id="btn-type-material"
-              class="w-full aspect-square rounded-xl bg-blue-600 hover:bg-blue-700
+              class="w-full aspect-square rounded-2xl bg-gradient-to-tr from-indigo-500 to-indigo-600 hover:shadow-lg hover:shadow-indigo-550/15
                      text-white font-extrabold text-sm shadow
                      flex items-center justify-center
-                     active:scale-95 transition"
+                     active:scale-95 transition duration-250"
               type="button">MATERIAL</button>
           </div>
 
@@ -757,7 +1062,7 @@
         <div class="px-4 py-3 border-t border-slate-100 flex justify-end">
           <button
             id="btn-type-cancel"
-            class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-bold active:scale-95"
+            class="px-4 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-sm font-bold active:scale-95 hover:bg-slate-100 transition"
             type="button"
           >
             Batal
@@ -768,7 +1073,7 @@
   </div>
 
   <!-- LIGHTBOX -->
-  <div id="lb" class="hidden fixed inset-0 z-[80] bg-black/80 backdrop-blur-sm">
+  <div id="lb" class="hidden fixed inset-0 z-[80] bg-black/90 backdrop-blur-sm">
     <div class="absolute inset-0" id="lb-backdrop"></div>
 
     <div class="relative h-full w-full flex items-center justify-center p-3">
@@ -804,8 +1109,8 @@
         <svg class="w-6 h-6"><use href="#ic-right"></use></svg>
       </button>
 
-      <div id="lbStage" class="relative w-[100vw] max-w-[100vw]">
-        <img id="lbImg"
+      <div id="lbStage" class="relative w-[100vw] max-w-[100vw] overflow-hidden">
+        <img id="lbImg" referrerpolicy="no-referrer"
           class="block w-[100vw] max-w-[100vw] max-h-[85vh] rounded-xl shadow-2xl object-contain select-none"
           alt="preview">
         <canvas id="lbCanvas"
@@ -814,13 +1119,13 @@
 
       <div id="lbCount"
         class="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1
-               rounded-full bg-black/40 text-white text-xs font-semibold">
+               rounded-full bg-slate-950/70 backdrop-blur-sm border border-slate-800 text-white text-xs font-semibold">
         1 / 1
       </div>
 
       <div id="lbDrawBar"
         class="hidden absolute bottom-3 left-1/2 -translate-x-1/2 z-[95]
-               px-2 py-2 rounded-2xl bg-black/50 backdrop-blur-sm
+               px-2 py-2 rounded-2xl bg-slate-950/70 border border-slate-800 backdrop-blur-sm
                flex items-center gap-2">
         <button id="lb-color-red" type="button"
           class="w-9 h-9 rounded-xl bg-red-500 border border-white/30 active:scale-95"></button>
@@ -854,35 +1159,35 @@
 
     <div class="relative h-full w-full flex items-center justify-center p-3">
       <div id="ovCard"
-        class="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200
+        class="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200/80
                overflow-hidden fade-in">
         <div class="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
-          <div id="ovIcon" class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center">
-            <svg class="w-5 h-5 text-slate-700"><use href="#ic-info"></use></svg>
+          <div id="ovIcon" class="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-200">
+            <svg class="w-5 h-5 text-slate-500"><use href="#ic-info"></use></svg>
           </div>
           <div class="flex-1 min-w-0">
             <div id="ovTitle" class="text-sm font-extrabold text-slate-800 truncate">Title</div>
-            <div id="ovSub" class="text-[11px] text-slate-400 truncate hidden">Sub</div>
+            <div id="ovSub" class="text-[11px] text-slate-450 truncate hidden">Sub</div>
           </div>
           <button id="ovX"
-            class="w-9 h-9 rounded-xl hover:bg-slate-50 active:scale-95
+            class="w-9 h-9 rounded-xl hover:bg-slate-100 active:scale-95
                    flex items-center justify-center"
             type="button">
             <svg class="w-5 h-5 text-slate-500"><use href="#ic-x"></use></svg>
           </button>
         </div>
 
-        <div id="ovBody" class="px-4 py-3 text-sm text-slate-700"></div>
+        <div id="ovBody" class="px-4 py-3 text-sm text-slate-650"></div>
 
         <div id="ovFooter" class="px-4 py-3 border-t border-slate-100 flex gap-2 justify-end">
           <button id="ovCancel"
-            class="px-3 py-2 rounded-xl border border-slate-200 bg-white
-                   text-slate-700 text-sm font-bold active:scale-95"
+            class="px-3 py-2 rounded-xl border border-slate-200 bg-slate-50
+                   text-slate-600 text-sm font-bold active:scale-95 hover:bg-slate-100 transition"
             type="button">Batal</button>
 
           <button id="ovOk"
-            class="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700
-                   text-white text-sm font-bold active:scale-95"
+            class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700
+                   text-white text-sm font-bold active:scale-95 transition"
             type="button">OK</button>
         </div>
       </div>
@@ -894,19 +1199,19 @@
     class="hidden fixed top-3 left-1/2 -translate-x-1/2 z-[95]
            max-w-md w-[92vw]">
     <div id="toastBox"
-      class="bg-white border border-slate-200 shadow-xl rounded-2xl px-3 py-2
+      class="bg-white border border-slate-200/80 shadow-2xl rounded-2xl px-3 py-2
              flex items-center gap-2 fade-in">
       <div id="toastIcon"
-        class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center">
-        <svg class="w-5 h-5 text-slate-700"><use href="#ic-info"></use></svg>
+        class="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-200">
+        <svg class="w-5 h-5 text-slate-500"><use href="#ic-info"></use></svg>
       </div>
 
       <div class="flex-1 min-w-0">
-        <div id="toastText" class="text-sm font-semibold text-slate-800 truncate">...</div>
+        <div id="toastText" class="text-sm font-semibold text-slate-700 truncate">...</div>
       </div>
 
       <button id="toastClose"
-        class="w-9 h-9 rounded-xl hover:bg-slate-50 active:scale-95
+        class="w-9 h-9 rounded-xl hover:bg-slate-100 active:scale-95
                flex items-center justify-center"
         type="button">
         <svg class="w-5 h-5 text-slate-500"><use href="#ic-x"></use></svg>
@@ -940,16 +1245,16 @@
   <!-- PWA INSTALL BANNER -->
   <div id="pwa-install-banner"
        class="hidden fixed bottom-16 left-1/2 -translate-x-1/2 z-[99]
-              w-[92vw] max-w-md rounded-2xl bg-blue-600 text-white
+              w-[92vw] max-w-md rounded-2xl bg-white border border-slate-200/80
               shadow-2xl px-4 py-3 flex items-center gap-3">
     <div class="flex-1">
-      <div class="text-sm font-extrabold leading-tight">Install Logistik SMG</div>
-      <div class="text-[11px] text-blue-100">Lebih cepat • Bisa offline • Seperti aplikasi</div>
+      <div class="text-sm font-extrabold leading-tight text-slate-800">Install Logistik SMG</div>
+      <div class="text-[11px] text-slate-455">Lebih cepat • Bisa offline • Seperti aplikasi</div>
     </div>
     <button id="pwa-install-btn"
-            class="bg-white text-blue-600 px-3 py-1 rounded font-bold">Install</button>
+            class="bg-indigo-600 text-white px-3 py-1.5 rounded-xl font-bold shadow shadow-indigo-600/20 hover:bg-indigo-755 transition">Install</button>
     <button id="pwa-install-close"
-            class="w-9 h-9 flex items-center justify-center rounded-full">✕</button>
+            class="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 transition">✕</button>
   </div>
 
   <script>

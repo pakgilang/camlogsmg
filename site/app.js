@@ -2555,8 +2555,6 @@ mid.appendChild(topRow);
   // DYNAMIC CONFIGURATION/SETTINGS HELPERS
   // =============================
   function loadSettingsToUI() {
-    var gasUrlEl = $("set-gas-url");
-    var apiKeyEl = $("set-api-key");
     var qualityEl = $("set-comp-quality");
     var widthEl = $("set-max-width");
     var targetKbEl = $("set-target-kb");
@@ -2564,8 +2562,6 @@ mid.appendChild(topRow);
     var limitEl = $("set-history-limit");
     var themeEl = $("set-app-theme");
 
-    if (gasUrlEl) gasUrlEl.value = GAS_API_URL || "";
-    if (apiKeyEl) apiKeyEl.value = API_KEY || "";
     if (qualityEl) qualityEl.value = JPEG_QUALITY_START;
     if (widthEl) widthEl.value = MAX_WIDTH;
     if (targetKbEl) targetKbEl.value = TARGET_KB;
@@ -2575,8 +2571,6 @@ mid.appendChild(topRow);
   }
 
   function saveSettingsFromUI() {
-    var gasUrlEl = $("set-gas-url");
-    var apiKeyEl = $("set-api-key");
     var qualityEl = $("set-comp-quality");
     var widthEl = $("set-max-width");
     var targetKbEl = $("set-target-kb");
@@ -2584,14 +2578,6 @@ mid.appendChild(topRow);
     var limitEl = $("set-history-limit");
     var themeEl = $("set-app-theme");
 
-    if (gasUrlEl) {
-      GAS_API_URL = (gasUrlEl.value || "").trim();
-      localStorage.setItem("SMG_SET_GAS_URL", GAS_API_URL);
-    }
-    if (apiKeyEl) {
-      API_KEY = (apiKeyEl.value || "").trim();
-      localStorage.setItem("SMG_SET_API_KEY", API_KEY);
-    }
     if (qualityEl) {
       var q = parseFloat(qualityEl.value);
       if (!isNaN(q) && q >= 0.1 && q <= 1.0) {

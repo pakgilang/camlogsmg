@@ -1097,6 +1097,58 @@
   // =============================
   // EDIT -> KEMBALI KE FORM (bukan popup)
   // =============================
+  function hydrateCapturedFilesFromDB(meta, cb) {
+    meta = meta || [];
+    var ids = [];
+    for (var i = 0; i < meta.length; i++) {
+      if (meta[i] && meta[i].id) {
+        ids.push(meta[i].id);
+      }
+    }
+
+    if (ids.length === 0) {
+      capturedFiles = [];
+      if (cb) cb();
+      return;
+    }
+
+    photoGetMany(ids, function (err, arr) {
+      if (err) {
+        showToast("error", "Gagal memuat foto dari DB.");
+      }
+
+      capturedFiles = [];
+      for (var i = 0; i < meta.length; i++) {
+        var m = meta[i];
+        if (!m) continue;
+        var idx = ids.indexOf(m.id);
+        var dataUrl = (idx >= 0 && arr && arr[idx]) ? arr[idx] : "";
+        capturedFiles.push({
+          id: m.id,
+          dataUrl: dataUrl,
+          sizeKb: m.sizeKb || 0,
+          jenis: m.jenis || "MATERIAL"
+        });
+      }
+      if (cb) cb();
+    });
+  }
+
+  function sanitizeCapturedOnRestore() {
+    if (!capturedFiles) {
+      capturedFiles = [];
+      return;
+    }
+    var clean = [];
+    for (var i = 0; i < capturedFiles.length; i++) {
+      var f = capturedFiles[i];
+      if (f && f.id && f.dataUrl) {
+        clean.push(f);
+      }
+    }
+    capturedFiles = clean;
+  }
+
   function updateEditBanner() {
     var bar = $("edit-banner");
     var label = $("edit-label");

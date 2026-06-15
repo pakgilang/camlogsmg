@@ -30,6 +30,18 @@
     lastPt: null
   };
 
+  var lbCrop = {
+    active: false,
+    baseImg: null,
+    cropping: false,
+    startX: 0,
+    startY: 0,
+    cropLeft: 0,
+    cropTop: 0,
+    cropWidth: 0,
+    cropHeight: 0
+  };
+
   var zoomState = {
     scale: 1,
     translateX: 0,
@@ -118,6 +130,59 @@
     setNavDisabled(false);
   }
 
+  function exitCropMode() {
+    var cv = $("lbCanvas");
+    var bar = $("lbCropBar");
+    if (cv) cv.classList.add("hidden");
+    if (bar) bar.classList.add("hidden");
+    lbCrop.active = false;
+    lbCrop.baseImg = null;
+    lbCrop.cropping = false;
+    setSaving(false);
+    setNavDisabled(false);
+  }
+
+  function enterCropMode() {
+    if (deps.isUILocked()) return;
+    if (!canAnnotate()) {
+      deps.showToast("warning", "Potong hanya untuk foto draft (sebelum upload).");
+      return;
+    }
+
+    var src = String(lbItems[lbIndex] || "");
+    var img = new Image();
+    img.onload = function () {
+      var cv = $("lbCanvas");
+      var bar = $("lbCropBar");
+      if (!cv || !bar) return;
+
+      lbCrop.active = true;
+      lbCrop.baseImg = img;
+      lbCrop.cropping = false;
+      lbCrop.cropWidth = 0;
+      lbCrop.cropHeight = 0;
+      setSaving(false);
+
+      cv.width = img.naturalWidth || img.width || 1;
+      cv.height = img.naturalHeight || img.height || 1;
+
+      cv.classList.remove("hidden");
+      bar.classList.remove("hidden");
+      setNavDisabled(true);
+      syncCanvasCssToImage();
+
+      var ctx = cv.getContext("2d");
+      if (ctx) {
+        ctx.clearRect(0, 0, cv.width, cv.height);
+        ctx.drawImage(img, 0, 0, cv.width, cv.height);
+      }
+    };
+    img.onerror = function () {
+      deps.showToast("error", "Gagal memuat gambar untuk dipotong.");
+    };
+    img.src = src;
+  }
+
   function enterDrawMode() {
     if (deps.isUILocked()) return;
     if (!canAnnotate()) {
@@ -203,6 +268,78 @@
     });
   }
 
+  function redrawCropCanvas() {
+    var cv = $("lbCanvas");
+    if (!cv || !lbCrop.active || !lbCrop.baseImg) return;
+    var ctx = cv.getContext("2d");
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(lbCrop.baseImg, 0, 0, cv.width, cv.height);
+
+    ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    ctx.fillRect(0, 0, cv.width, cv.height);
+
+    if (lbCrop.cropWidth > 4 && lbCrop.cropHeight > 4) {
+      ctx.drawImage(lbCrop.baseImg,
+                    lbCrop.cropLeft, lbCrop.cropTop, lbCrop.cropWidth, lbCrop.cropHeight,
+                    lbCrop.cropLeft, lbCrop.cropTop, lbCrop.cropWidth, lbCrop.cropHeight);
+
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 4;
+      ctx.setLineDash([8, 4]);
+      ctx.strokeRect(lbCrop.cropLeft, lbCrop.cropTop, lbCrop.cropWidth, lbCrop.cropHeight);
+      ctx.setLineDash([]);
+    }
+  }
+
+  function saveCrop() {
+    if (!lbCrop.active) return;
+    if (lbDraw.saving) return;
+    if (deps.isUILocked()) return;
+    var photoId = getCurrentPhotoId();
+    var cv = $("lbCanvas");
+    if (!photoId || !cv || !lbCrop.baseImg) return;
+
+    if (lbCrop.cropWidth < 10 || lbCrop.cropHeight < 10) {
+      deps.showToast("warning", "Tarik kotak potong yang lebih besar.");
+      return;
+    }
+
+    setSaving(true);
+    deps.showToast("info", "Memotong gambar...");
+
+    var tempCv = document.createElement("canvas");
+    tempCv.width = lbCrop.cropWidth;
+    tempCv.height = lbCrop.cropHeight;
+    var tempCtx = tempCv.getContext("2d");
+    if (tempCtx) {
+      tempCtx.drawImage(lbCrop.baseImg,
+                        lbCrop.cropLeft, lbCrop.cropTop, lbCrop.cropWidth, lbCrop.cropHeight,
+                        0, 0, lbCrop.cropWidth, lbCrop.cropHeight);
+    }
+
+    deps.compressCanvasAsync(tempCv, function (err, packed) {
+      if (err || !packed || !packed.dataUrl) {
+        setSaving(false);
+        deps.showToast("error", "Gagal kompres gambar.");
+        return;
+      }
+
+      var dataUrl = packed.dataUrl || "";
+      var sizeKb = packed.sizeKb || 0;
+      lbItems[lbIndex] = dataUrl;
+
+      exitCropMode();
+      render();
+
+      deps.photoPut(photoId, dataUrl, function () {
+        try { deps.onSaved(lbMeta, photoId, dataUrl, sizeKb); } catch (e2) {}
+        deps.showToast("success", "Gambar dipotong (" + sizeKb + " KB).");
+      });
+    });
+  }
+
   function render() {
     resetZoom();
     var img = $("lbImg");
@@ -217,11 +354,18 @@
       if (canAnnotate()) toggle.classList.remove("hidden");
       else toggle.classList.add("hidden");
     }
+
+    var toggleCrop = $("lb-crop-toggle");
+    if (toggleCrop) {
+      if (canAnnotate()) toggleCrop.classList.remove("hidden");
+      else toggleCrop.classList.add("hidden");
+    }
   }
 
   function show(items, startIndex, meta) {
     if (!items || !items.length) return;
     exitDrawMode();
+    exitCropMode();
     lbItems = items;
     lbIndex = Math.max(0, Math.min(items.length - 1, startIndex || 0));
     lbMeta = meta || { ids: null, source: "", queueIndex: -1 };
@@ -250,6 +394,7 @@
     if (el) el.classList.add("hidden");
 
     exitDrawMode();
+    exitCropMode();
     lbOpenFlag = false;
     lbItems = [];
     lbIndex = 0;
@@ -266,14 +411,14 @@
 
   function prev() {
     if (!lbItems.length) return;
-    if (lbDraw.active || lbDraw.saving) return;
+    if (lbDraw.active || lbCrop.active || lbDraw.saving) return;
     lbIndex = (lbIndex - 1 + lbItems.length) % lbItems.length;
     render();
   }
 
   function next() {
     if (!lbItems.length) return;
-    if (lbDraw.active || lbDraw.saving) return;
+    if (lbDraw.active || lbCrop.active || lbDraw.saving) return;
     lbIndex = (lbIndex + 1) % lbItems.length;
     render();
   }
@@ -283,6 +428,7 @@
     if (k === "Escape") {
       if (lbDraw.saving) return;
       if (lbDraw.active) exitDrawMode();
+      else if (lbCrop.active) exitCropMode();
       else close();
     }
     if (k === "ArrowLeft") prev();
@@ -402,6 +548,10 @@
     on($("lb-draw-cancel"), "click", function () { if (!lbDraw.saving) exitDrawMode(); });
     on($("lb-draw-save"), "click", function () { saveDraw(); });
 
+    on($("lb-crop-toggle"), "click", function () { if (!deps.isUILocked() && !lbCrop.active) enterCropMode(); });
+    on($("lb-crop-cancel"), "click", function () { if (!lbDraw.saving) exitCropMode(); });
+    on($("lb-crop-save"), "click", function () { saveCrop(); });
+
     on($("lb-color-red"), "click", function () { lbDraw.color = "#ef4444"; });
     on($("lb-color-yellow"), "click", function () { lbDraw.color = "#f59e0b"; });
     on($("lb-color-blue"), "click", function () { lbDraw.color = "#3b82f6"; });
@@ -409,50 +559,82 @@
     var cv = $("lbCanvas");
     if (cv) {
       on(cv, "pointerdown", function (e) {
-        if (!lbDraw.active || lbDraw.saving) return;
-        try { e.preventDefault(); } catch (x) {}
-        var pt = pointFromEvent(e);
-        if (!pt) return;
-        lbDraw.drawing = true;
-        lbDraw.lastPt = pt;
-        var ctx = cv.getContext("2d");
-        if (ctx) {
-          ctx.strokeStyle = lbDraw.color || "#ef4444";
-          ctx.lineWidth = lbDraw.width || 8;
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
-          ctx.beginPath();
-          ctx.moveTo(pt[0], pt[1]);
+        if (lbDraw.saving) return;
+        if (lbDraw.active) {
+          try { e.preventDefault(); } catch (x) {}
+          var pt = pointFromEvent(e);
+          if (!pt) return;
+          lbDraw.drawing = true;
+          lbDraw.lastPt = pt;
+          var ctx = cv.getContext("2d");
+          if (ctx) {
+            ctx.strokeStyle = lbDraw.color || "#ef4444";
+            ctx.lineWidth = lbDraw.width || 8;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.beginPath();
+            ctx.moveTo(pt[0], pt[1]);
+          }
+          try { cv.setPointerCapture(e.pointerId); } catch (y) {}
+        } else if (lbCrop.active) {
+          try { e.preventDefault(); } catch (x2) {}
+          var pt2 = pointFromEvent(e);
+          if (!pt2) return;
+          lbCrop.cropping = true;
+          lbCrop.startX = pt2[0];
+          lbCrop.startY = pt2[1];
+          lbCrop.cropLeft = pt2[0];
+          lbCrop.cropTop = pt2[1];
+          lbCrop.cropWidth = 0;
+          lbCrop.cropHeight = 0;
+          try { cv.setPointerCapture(e.pointerId); } catch (y2) {}
         }
-        try { cv.setPointerCapture(e.pointerId); } catch (y) {}
       });
       on(cv, "pointermove", function (e) {
-        if (!lbDraw.active || lbDraw.saving || !lbDraw.drawing) return;
-        try { e.preventDefault(); } catch (x2) {}
-        var pt = pointFromEvent(e);
-        if (!pt) return;
-        var ctx = cv.getContext("2d");
-        if (!ctx) return;
-        if (!lbDraw.lastPt) {
+        if (lbDraw.saving) return;
+        if (lbDraw.active && lbDraw.drawing) {
+          try { e.preventDefault(); } catch (x3) {}
+          var pt = pointFromEvent(e);
+          if (!pt) return;
+          var ctx = cv.getContext("2d");
+          if (!ctx) return;
+          if (!lbDraw.lastPt) {
+            lbDraw.lastPt = pt;
+            ctx.beginPath();
+            ctx.moveTo(pt[0], pt[1]);
+            return;
+          }
+          ctx.lineTo(pt[0], pt[1]);
+          ctx.stroke();
           lbDraw.lastPt = pt;
-          ctx.beginPath();
-          ctx.moveTo(pt[0], pt[1]);
-          return;
+        } else if (lbCrop.active && lbCrop.cropping) {
+          try { e.preventDefault(); } catch (x4) {}
+          var pt2 = pointFromEvent(e);
+          if (!pt2) return;
+          lbCrop.cropLeft = Math.min(lbCrop.startX, pt2[0]);
+          lbCrop.cropTop = Math.min(lbCrop.startY, pt2[1]);
+          lbCrop.cropWidth = Math.abs(lbCrop.startX - pt2[0]);
+          lbCrop.cropHeight = Math.abs(lbCrop.startY - pt2[1]);
+          redrawCropCanvas();
         }
-        ctx.lineTo(pt[0], pt[1]);
-        ctx.stroke();
-        lbDraw.lastPt = pt;
       });
       on(cv, "pointerup", function (e) {
-        if (!lbDraw.active) return;
-        try { e.preventDefault(); } catch (x3) {}
-        lbDraw.drawing = false;
-        lbDraw.lastPt = null;
+        if (lbDraw.active) {
+          try { e.preventDefault(); } catch (x5) {}
+          lbDraw.drawing = false;
+          lbDraw.lastPt = null;
+        } else if (lbCrop.active) {
+          try { e.preventDefault(); } catch (x6) {}
+          lbCrop.cropping = false;
+        }
       });
       on(cv, "pointercancel", function () {
-        if (!lbDraw.active) return;
-        lbDraw.drawing = false;
-        lbDraw.lastPt = null;
+        if (lbDraw.active) {
+          lbDraw.drawing = false;
+          lbDraw.lastPt = null;
+        } else if (lbCrop.active) {
+          lbCrop.cropping = false;
+        }
       });
     }
 

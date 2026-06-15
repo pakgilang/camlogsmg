@@ -43,9 +43,16 @@
     }
   }
 
-  // Safety: if config missing, still show UI but blocks upload
   function hasApi() {
-    return !!(GAS_API_URL && API_KEY);
+    return window.SMGUploader.hasApi();
+  }
+
+  function apiPost(action, data, cb) {
+    window.SMGUploader.apiPost(action, data, cb);
+  }
+
+  function apiGet(action, params, cb) {
+    window.SMGUploader.apiGet(action, params, cb);
   }
 
    function getActiveUser() {
@@ -522,62 +529,33 @@
     if (st.poMode) setPOMode(st.poMode, false);
   }
 
-  function getAppState() {
-    return {
-      form: getFormState(),
-      poQueue: poQueue || [],
-      currentPOMode: currentPOMode,
-      uploadArmed: !!uploadArmed,
-      capturedFiles: capturedFiles || []
-    };
-  }
-
   function persistSnapshotNow(cb) {
-    if (RESTORING) return;
-    try {
-      var state = getAppState();
-      SMGStorage.saveAppState(state, function (err) {
-        if (!err && !RESTORING) showDraftSaved();
-        if (cb) cb(err || null);
-      });
-    } catch (e) { if (cb) cb(e); }
+    window.SMGStore.persistState(function (err) {
+      if (!err && !RESTORING) showDraftSaved();
+      if (cb) cb(err || null);
+    });
   }
 
   function saveStateDebounced() {
-    if (RESTORING) return;
-    if (SAVE_TIMER) clearTimeout(SAVE_TIMER);
-    SAVE_TIMER = setTimeout(function () { persistSnapshotNow(); }, 450);
+    var formState = getFormState();
+    window.SMGStore.updateFormState(formState, true);
   }
 
   function clearPersistedState(cb) {
-    SMGStorage.clearAppState(cb);
+    window.SMGStorage.clearAppState(cb);
   }
 
   function restoreSnapshot(cb) {
     RESTORING = true;
-    SMGStorage.loadAppState(function (err, state) {
-      if (err || !state) {
-        RESTORING = false;
-        return cb && cb(false);
-      }
-
-      try {
-        currentPOMode = state.currentPOMode || "std";
-        poQueue = state.poQueue || [];
-        uploadArmed = !!state.uploadArmed;
-        capturedFiles = state.capturedFiles || [];
-      } catch (e) {
-        RESTORING = false;
-        return cb && cb(false);
-      }
-
-      setPOMode(currentPOMode, false);
-      applyFormState(state.form || null);
-
-      renderPOList();
-      updatePreviewUI();
-      refreshStats();
+    window.SMGStore.loadState(function (err, loadedState) {
       RESTORING = false;
+      if (err || !loadedState) {
+        return cb && cb(false);
+      }
+
+      setPOMode(loadedState.currentPOMode || "std", false);
+      applyFormState(loadedState.form || null);
+
       cb && cb(true);
     });
   }
@@ -612,67 +590,12 @@
   }
 
   // =============================
-  // PO NORMALIZER
+  // PO NORMALIZER DELEGATES
   // =============================
-  function pad2(n) {
-    n = parseInt(n, 10);
-    if (isNaN(n)) n = 0;
-    n = (n % 100 + 100) % 100;
-    return (n < 10) ? ("0" + n) : String(n);
-  }
-
-  function digitsOnly(val) { return String(val || "").replace(/\D/g, ""); }
-
-  function stripKnownLocationPrefix(digits) {
-    if (!digits) return "";
-    var prefKeys = ["SL3", "SRG", "PML", "BYS"];
-    for (var i = 0; i < prefKeys.length; i++) {
-      var p = MODE_PREFIXES[prefKeys[i]];
-      if (p && digits.indexOf(p) === 0) return digits.substring(p.length);
-    }
-    return digits;
-  }
-
-  function force4DigitsSuffix(d) {
-    d = String(d || "");
-    if (!d) return "";
-    if (d.length > 4) d = d.slice(-4);
-    while (d.length < 4) d = "0" + d;
-    return d;
-  }
-
-  function normalizePOWithMode(mode, raw) {
-    var m = mode || "std";
-    var digits = digitsOnly(raw);
-    if (!digits) return "";
-
-    digits = stripKnownLocationPrefix(digits);
-    if (!digits) return "";
-
-    if (m === "std") {
-      var y = new Date().getFullYear() % 100;
-      var yr = pad2(y);
-      var prev1 = pad2(y - 1);
-      var prev2 = pad2(y - 2);
-
-      if (digits.length === 6) {
-        var head2 = digits.substring(0, 2);
-        if (head2 === yr || head2 === prev1 || head2 === prev2) {
-          return "2030" + head2 + "00" + digits.substring(2);
-        }
-        return digits;
-      } else if (digits.length === 4) {
-        return "2030" + yr + "00" + digits;
-      }
-      return digits;
-    }
-
-    var prefix = MODE_PREFIXES[m] || "";
-    if (!prefix) return digits;
-
-    digits = force4DigitsSuffix(digits);
-    return prefix + digits;
-  }
+  function digitsOnly(val) { return window.SMGNormalizer.digitsOnly(val); }
+  function stripKnownLocationPrefix(digits) { return window.SMGNormalizer.stripKnownLocationPrefix(digits); }
+  function force4DigitsSuffix(d) { return window.SMGNormalizer.force4DigitsSuffix(d); }
+  function normalizePOWithMode(mode, raw) { return window.SMGNormalizer.normalizePOWithMode(mode, raw); }
 
   function normalizeCurrentPOInput() {
     var poEl = $("inp-po");
@@ -681,28 +604,28 @@
   }
 
   function setPOMode(mode, shouldNormalizeNow) {
-    currentPOMode = mode || "std";
+    window.SMGStore.setPOMode(mode);
 
-    var keys = ["std", "SL3", "SRG", "PML", "BYS"];
+    var keys = ["std", "SL3", "SRG", "PML", "BYS", "KM8/9"];
     for (var i = 0; i < keys.length; i++) {
-      var id = (keys[i] === "std") ? "mode-std" : ("mode-" + keys[i]);
+      var key = keys[i];
+      var id = (key === "std") ? "mode-std" : (key === "KM8/9" ? "mode-KM8" : "mode-" + key);
       var b = $(id);
       if (!b) continue;
 
       if (keys[i] === currentPOMode) {
         b.className =
-          "flex-1 py-2 rounded-lg text-[11px] font-bold flex items-center " +
+          "flex-shrink-0 px-3 py-2 rounded-lg text-[11px] font-bold flex items-center " +
           "justify-center gap-2 bg-indigo-600 text-white shadow shadow-indigo-600/30";
       } else {
         b.className =
-          "flex-1 py-2 rounded-lg text-[11px] font-semibold flex items-center " +
+          "flex-shrink-0 px-3 py-2 rounded-lg text-[11px] font-semibold flex items-center " +
           "justify-center gap-2 text-slate-400 hover:text-slate-200 " +
           "hover:bg-slate-850 transition duration-200";
       }
     }
 
     if (shouldNormalizeNow) normalizeCurrentPOInput();
-    saveStateDebounced();
   }
 
   function normalizeSearchInput() {
@@ -714,19 +637,20 @@
   function setSearchPOMode(mode, shouldNormalizeNow) {
     searchPOMode = mode || "std";
 
-    var keys = ["std", "SL3", "SRG", "PML", "BYS"];
+    var keys = ["std", "SL3", "SRG", "PML", "BYS", "KM8/9"];
     for (var i = 0; i < keys.length; i++) {
-      var id = "search-mode-" + keys[i];
+      var key = keys[i];
+      var id = (key === "KM8/9") ? "search-mode-KM8" : "search-mode-" + key;
       var b = $(id);
       if (!b) continue;
 
       if (keys[i] === searchPOMode) {
         b.className =
-          "flex-1 py-2 rounded-lg text-[11px] font-bold flex items-center " +
+          "flex-shrink-0 px-3 py-2 rounded-lg text-[11px] font-bold flex items-center " +
           "justify-center gap-2 bg-indigo-600 text-white shadow shadow-indigo-600/30";
       } else {
         b.className =
-          "flex-1 py-2 rounded-lg text-[11px] font-semibold flex items-center " +
+          "flex-shrink-0 px-3 py-2 rounded-lg text-[11px] font-semibold flex items-center " +
           "justify-center gap-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition duration-200";
       }
     }
@@ -797,11 +721,9 @@
         showToast("error", "Gagal proses gambar.");
         return;
       }
-      photoPut(id, packed.dataUrl, function () {
-        capturedFiles.push({ id: id, dataUrl: packed.dataUrl, sizeKb: packed.sizeKb, jenis: tipe });
+      window.SMGStore.addPhoto(id, packed.dataUrl, packed.sizeKb, tipe, function () {
         processingCount = Math.max(0, processingCount - 1);
         updatePreviewUI();
-        saveStateDebounced();
       });
     }
     compressFileAsync(file, function (err2, packed2) {
@@ -923,6 +845,9 @@
         var im = document.createElement("img");
         im.src = f.dataUrl || "";
         im.className = "w-full h-full object-cover cursor-pointer";
+        im.setAttribute("role", "button");
+        im.setAttribute("tabindex", "0");
+        im.setAttribute("alt", "Pratinjau foto draft");
         im.onclick = function () { previewDraft(idx); };
         wrap.appendChild(im);
 
@@ -998,11 +923,7 @@
 
   function removeDraftPhoto(i) {
     if (uiLocked) return;
-    var f = capturedFiles[i];
-    capturedFiles.splice(i, 1);
-    if (f && f.id) photoDel(f.id);
-    updatePreviewUI();
-    saveStateDebounced();
+    window.SMGStore.removePhoto(i);
   }
 
   function previewDraft(i) {
@@ -1250,9 +1171,10 @@ function saveDraft(startNew) {
     if (err) { showToast("warning", err); return; }
 
     function proceedSave() {
-      // Jika sedang edit (Edit -> kembali ke FORM), update item lama (bukan push baru)
-      if (editingIndex >= 0 && poQueue[editingIndex]) {
-        var old = poQueue[editingIndex];
+      var targetIndex = editingIndex;
+
+      if (targetIndex >= 0 && poQueue[targetIndex]) {
+        var old = poQueue[targetIndex];
 
         // Pertahankan upload_id bila PO tidak berubah (idempotent).
         // Jika No PO berubah, reset upload_id dan tandai ulang sebagai belum ter-upload.
@@ -1266,51 +1188,44 @@ function saveDraft(startNew) {
 
         // Keep existing status if any
         payload.status_upload_ke_srm = old.status_upload_ke_srm || payload.status_upload_ke_srm || "Pending";
+      }
 
-        poQueue[editingIndex] = payload;
+      window.SMGStore.savePO(payload, targetIndex, function () {
+        if (targetIndex >= 0) {
+          showToast("success", "PO berhasil diupdate.");
+        } else {
+          showToast("success", startNew ? "PO tersimpan. Lanjut input baru." : "PO tersimpan ke daftar.");
+        }
+
         editingIndex = -1;
 
-        showToast("success", "PO berhasil diupdate.");
-      } else {
-        poQueue.push(payload);
-        showToast("success", startNew ? "PO tersimpan. Lanjut input baru." : "PO tersimpan ke daftar.");
-      }
+        var elPo = $("inp-po");
+        var elGit = $("inp-git");
+        var elPic = $("inp-pic");
+        var elKet = $("inp-ket");
+        if (elPo) elPo.value = "";
+        if (elGit) elGit.value = "";
+        if (elPic) elPic.value = "";
+        if (elKet) elKet.value = "";
 
-      renderPOList();
-      refreshStats();
+        var opt = $("optional-fields");
+        if (opt) opt.classList.add("hidden");
 
-      capturedFiles = [];
-      updatePreviewUI();
+        updateEditBanner();
 
-      var elPo = $("inp-po");
-      var elGit = $("inp-git");
-      var elPic = $("inp-pic");
-      var elKet = $("inp-ket");
-      if (elPo) elPo.value = "";
-      if (elGit) elGit.value = "";
-      if (elPic) elPic.value = "";
-      if (elKet) elKet.value = "";
+        if (startNew) {
+          focusPrimary();
+        } else {
+          try {
+            if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+          } catch (e) {}
+        }
 
-      var opt = $("optional-fields");
-      if (opt) opt.classList.add("hidden");
+        if (navigator.onLine && uploadArmed) scheduleAutoUpload("after_save");
+      });
+    }
 
-      // Matikan banner edit jika ada
-      updateEditBanner();
-
-      persistSnapshotNow();
-
-      // SIMPAN: cukup simpan/update ke daftar (tidak perlu auto-focus kembali ke PO).
-      // ADD PO (startNew=true): fokus ke input PO agar siap input berikutnya.
-      if (startNew) {
-        focusPrimary();
-      } else {
-        try {
-          if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-        } catch (e) {}
-      }
-
-      if (navigator.onLine && uploadArmed) scheduleAutoUpload("after_save");
-    }if (!payload.no_po) {
+    if (!payload.no_po) {
       uiConfirm(
         "Tanpa No PO?",
         "No PO kosong. Lanjut simpan tanpa No PO?",
@@ -1476,13 +1391,7 @@ mid.appendChild(topRow);
 
     uiConfirm("Hapus PO ini?", "PO: " + label + " akan dihapus dari daftar.", "Ya, Hapus", function (ok) {
       if (!ok) return;
-
-      var ids = (p && p.image_ids) ? p.image_ids.slice(0) : [];
-      photoDelMany(ids, function () {
-        poQueue.splice(idx, 1);
-        renderPOList();
-        refreshStats();
-        persistSnapshotNow();
+      window.SMGStore.deletePO(idx, function () {
         showToast("info", "PO dihapus.");
       });
     });
@@ -1531,7 +1440,8 @@ mid.appendChild(topRow);
       { v: "SL3", t: "SL3" },
       { v: "SRG", t: "SRG" },
       { v: "PML", t: "PML" },
-      { v: "BYS", t: "BYS/KBM" }
+      { v: "BYS", t: "BYS/KBM" },
+      { v: "KM8/9", t: "KM8/9" }
     ];
     var html = "";
     for (var i = 0; i < modes.length; i++) {
@@ -1611,22 +1521,22 @@ mid.appendChild(topRow);
         return;
       }
 
-      if (poQueue[idx].no_po !== po) {
-        poQueue[idx].upload_id = makeUploadId();
-        poQueue[idx]._uploaded = false;
+      var queue = JSON.parse(JSON.stringify(poQueue));
+      if (queue[idx].no_po !== po) {
+        queue[idx].upload_id = makeUploadId();
+        queue[idx]._uploaded = false;
       }
 
-      poQueue[idx].kategori = "MATERIAL";
-      poQueue[idx].no_po = (po || "").trim();
-      poQueue[idx].git_number = (git || "").trim();
-      poQueue[idx].pic_po = pic || "";
-      poQueue[idx].keterangan = (ket || "").trim();
-      poQueue[idx].po_mode = mode || "std";
+      queue[idx].kategori = "MATERIAL";
+      queue[idx].no_po = (po || "").trim();
+      queue[idx].git_number = (git || "").trim();
+      queue[idx].pic_po = pic || "";
+      queue[idx].keterangan = (ket || "").trim();
+      queue[idx].po_mode = mode || "std";
 
-      renderPOList();
-      refreshStats();
-      persistSnapshotNow();
-      showToast("success", "Meta diperbarui.");
+      window.SMGStore.updatePOQueue(queue, function () {
+        showToast("success", "Meta diperbarui.");
+      });
     };
 
     ovShow({
@@ -1662,22 +1572,7 @@ mid.appendChild(topRow);
   function confirmResetAll() {
     uiConfirm("Reset semua?", "Semua daftar PO yang belum diupload akan hilang.", "Ya, Reset", function (ok) {
       if (!ok) return;
-
-      var all = [];
-      for (var i = 0; i < poQueue.length; i++) {
-        if (poQueue[i] && poQueue[i].image_ids) {
-          for (var j = 0; j < poQueue[i].image_ids.length; j++) all.push(poQueue[i].image_ids[j]);
-        }
-      }
-      for (var k = 0; k < capturedFiles.length; k++) if (capturedFiles[k] && capturedFiles[k].id) all.push(capturedFiles[k].id);
-
-      photoDelMany(all, function () {
-        poQueue = [];
-        capturedFiles = [];
-        clearPersistedState();
-        renderPOList();
-        updatePreviewUI();
-        refreshStats();
+      window.SMGStore.resetAll(function () {
         showToast("info", "Daftar PO direset.");
       });
     });
@@ -1686,25 +1581,7 @@ mid.appendChild(topRow);
   // =============================
   // UPLOAD (Netlify -> GAS API)
   // =============================
-   function apiPost(action, data, cb) {
-     if (!hasApi()) return cb && cb(new Error("Missing config.js GAS_API_URL / API_KEY"));
-   
-     var body = new URLSearchParams();
-     body.set("action", action);
-     body.set("key", API_KEY);
-     body.set("data", JSON.stringify(data || {}));
-   
-     fetch(GAS_API_URL, {
-       method: "POST",
-       headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
-       body: body.toString(),
-       mode: "cors",
-       cache: "no-store"
-     })
-       .then(function (r) { return r.json(); })
-       .then(function (j) { cb && cb(null, j); })
-       .catch(function (e) { cb && cb(e); });
-   }
+  // apiPost is now delegated via window.SMGUploader.apiPost
 
 
   function refreshStats() {
@@ -1802,14 +1679,13 @@ mid.appendChild(topRow);
   function uploadAll(isAuto) {
     if (uiLocked) return;
 
-    if (!hasApi()) {
+    if (!window.SMGUploader.hasApi()) {
       uiAlert("error", "Config belum siap", "GAS_API_URL / API_KEY belum terpasang di Netlify (config.js).", function(){});
       return;
     }
 
     if (!isAuto) {
-      uploadArmed = true; // opt-in
-      persistSnapshotNow();
+      window.SMGStore.setUploadArmed(true, false);
     }
     if (isAuto && !uploadArmed) return;
 
@@ -1837,12 +1713,10 @@ mid.appendChild(topRow);
 
     if (pending.length === 0) {
       if (!isAuto) {
-        uploadArmed = false;
-        poQueue = [];
-        clearPersistedState();
-        renderPOList();
-        refreshStats();
-        showToast("info", "Daftar dibersihkan.");
+        window.SMGStore.setUploadArmed(false, false);
+        window.SMGStore.updatePOQueue([], function () {
+          showToast("info", "Daftar dibersihkan.");
+        });
       }
       return;
     }
@@ -1854,107 +1728,55 @@ mid.appendChild(topRow);
       buildUploadHtml(pending.length, !!isAuto)
     );
 
-    uploadNextPending(0, pending, !!isAuto);
-  }
+    window.SMGUploader.uploadAll(poQueue, {
+      getPhotos: function (ids, cb) {
+        window.SMGStorage.photoGetMany(ids, cb);
+      },
+      deletePhotos: function (ids, cb) {
+        window.SMGStorage.photoDelMany(ids, cb);
+      },
+      onSaveState: function (cb) {
+        window.SMGStore.persistState(cb);
+      },
+      onItemStart: function (item, index, total) {
+        var label = item.no_po ? item.no_po : "PO";
+        updateUploadUI(index, total, label, "ID: " + item.upload_id);
+      },
+      onItemSuccess: function (item, index, total) {
+        // Automatically updated by StateStore subscription updates
+      },
+      onItemError: function (item, err, index, total) {
+        // Handled in uploader onError
+      },
+      onStepUpdate: function (msg) {
+        var txt = $("u_text");
+        if (txt) txt.innerHTML = escapeHtml(msg);
+      },
+      onComplete: function (uploadedCount) {
+        finalizeUploadUI();
+        window.SMGStore.setUploadArmed(false, false);
+        autoUploadBusy = false;
 
-  function uploadNextPending(pos, pendingIdxs, isAuto) {
-    if (pos >= pendingIdxs.length) {
-      finalizeUploadUI();
-      uploadArmed = false;
-      autoUploadBusy = false;
-
-      var all = [];
-      for (var i = 0; i < poQueue.length; i++) {
-        if (poQueue[i] && poQueue[i].image_ids) {
-          for (var j = 0; j < poQueue[i].image_ids.length; j++) all.push(poQueue[i].image_ids[j]);
-        }
-      }
-
-      photoDelMany(all, function () {
-        poQueue = [];
-        capturedFiles = [];
-        clearPersistedState();
-        renderPOList();
-        updatePreviewUI();
-        refreshStats();
-
-        uiAlert("success", "Selesai!", "Berhasil upload " + pendingIdxs.length + " PO.", function () {
+        window.SMGStore.updatePOQueue([], function () {
+          uiAlert("success", "Selesai!", "Berhasil upload " + uploadedCount + " PO.", function () {
+            setUILock(false);
+            var ov = $("ov");
+            if (ov) ov.classList.add("ov-hidden");
+            OV.open = false;
+          });
+        });
+      },
+      onError: function (err) {
+        autoUploadBusy = false;
+        var msg = err ? err.message : "Unknown error";
+        uiAlert("error", "Gagal", "Error saat upload: " + msg, function () {
           setUILock(false);
           var ov = $("ov");
           if (ov) ov.classList.add("ov-hidden");
           OV.open = false;
+          if (isAuto) scheduleAutoUpload("retry_after_error");
         });
-      });
-
-      return;
-    }
-
-    var idx = pendingIdxs[pos];
-    var item = poQueue[idx];
-    if (!item) {
-      uploadNextPending(pos + 1, pendingIdxs, isAuto);
-      return;
-    }
-
-    if (!item.upload_id) item.upload_id = makeLegacyUploadId(item);
-
-    var label = (item.no_po ? item.no_po : "PO");
-    updateUploadUI(pos, pendingIdxs.length, label, "ID: " + item.upload_id);
-
-    var ids = item.image_ids ? item.image_ids.slice(0) : [];
-    photoGetMany(ids, function (err, images) {
-      if (err) {
-        uiAlert("error", "Gagal", "Gagal membaca foto lokal untuk " + label + ": " + String(err), function () {
-          setUILock(false);
-          var ov = $("ov");
-          if (ov) ov.classList.add("ov-hidden");
-          OV.open = false;
-          if (isAuto) scheduleAutoUpload("retry_read_photos");
-        });
-        return;
       }
-
-      var realImages = [];
-      for (var k = 0; k < images.length; k++) if (images[k]) realImages.push(images[k]);
-
-      var sendItem = cloneForUpload(item, realImages);
-
-      apiPost("simpanData", sendItem, function (e2, res) {
-        if (e2) {
-          persistSnapshotNow(function () {
-            uiAlert("error", "Gagal", "Error pada " + label + ": " + String(e2), function () {
-              setUILock(false);
-              var ov = $("ov");
-              if (ov) ov.classList.add("ov-hidden");
-              OV.open = false;
-              if (isAuto) scheduleAutoUpload("retry_failure");
-            });
-          });
-          return;
-        }
-
-        var ok = (res && res.status === "success") || (res && res.already === true) || (res && res.ok === true && res.status === "success");
-        if (ok) {
-          try { poQueue[idx]._uploaded = true; } catch (e) {}
-
-          photoDelMany(ids, function () {
-            persistSnapshotNow(function () {
-              uploadNextPending(pos + 1, pendingIdxs, isAuto);
-            });
-          });
-        } else {
-          persistSnapshotNow(function () {
-            var msg = (res && res.message) ? res.message : "Unknown error";
-            uiAlert("error", "Gagal", "Error pada " + label + ": " + msg, function () {
-              setUILock(false);
-              var ov = $("ov");
-              if (ov) ov.classList.add("ov-hidden");
-              OV.open = false;
-              if (isAuto) scheduleAutoUpload("retry_after_error");
-            });
-          });
-        }
-      });
     });
   }
 
@@ -2019,26 +1841,7 @@ mid.appendChild(topRow);
       '</span>';
   }
 
-  function apiGet(action, params, cb) {
-    if (!hasApi()) return cb && cb(new Error("Missing config.js GAS_API_URL / API_KEY"));
-
-    params = params || {};
-    params.action = action;
-    params.key = API_KEY;
-
-    var qs = [];
-    for (var k in params) {
-      if (!Object.prototype.hasOwnProperty.call(params, k)) continue;
-      qs.push(encodeURIComponent(k) + "=" + encodeURIComponent(String(params[k])));
-    }
-
-    var url = GAS_API_URL + (GAS_API_URL.indexOf("?") >= 0 ? "&" : "?") + qs.join("&");
-
-    fetch(url, { method: "GET", mode: "cors", cache: "no-store" })
-      .then(function (r) { return r.json(); })
-      .then(function (j) { cb && cb(null, j); })
-      .catch(function (e) { cb && cb(e); });
-  }
+  // apiGet is now delegated via window.SMGUploader.apiGet
 
   // --- RENDERING GIT DATA (Card Style) ---
   function renderGitItem(item) {
@@ -2519,6 +2322,7 @@ mid.appendChild(topRow);
     on($("mode-SRG"), "click", function () { setPOMode("SRG", true); });
     on($("mode-PML"), "click", function () { setPOMode("PML", true); });
     on($("mode-BYS"), "click", function () { setPOMode("BYS", true); });
+    on($("mode-KM8"), "click", function () { setPOMode("KM8/9", true); });
 
     // camera
     on($("btn-camera"), "click", function () { triggerCamera(); });
@@ -2570,6 +2374,7 @@ mid.appendChild(topRow);
     on($("search-mode-SRG"), "click", function () { setSearchPOMode("SRG", true); });
     on($("search-mode-PML"), "click", function () { setSearchPOMode("PML", true); });
     on($("search-mode-BYS"), "click", function () { setSearchPOMode("BYS", true); });
+    on($("search-mode-KM8"), "click", function () { setSearchPOMode("KM8/9", true); });
 
     // event delegation: toggle detail blocks inside search results
     var sr = $("search-results");
@@ -2719,6 +2524,19 @@ mid.appendChild(topRow);
   window.addEventListener("load", function () {
     applyTheme(APP_THEME);
     previewSkeletonEl = $("preview-skeleton");
+
+    // Subscribe app.js UI elements to SMGStore
+    window.SMGStore.subscribe(function (state) {
+      capturedFiles = state.capturedFiles;
+      poQueue = state.poQueue;
+      currentPOMode = state.currentPOMode;
+      uploadArmed = state.uploadArmed;
+
+      renderPOList();
+      updatePreviewUI();
+      refreshStats();
+      updateEditBanner();
+    });
 
     bindUi();
     try {

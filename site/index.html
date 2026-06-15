@@ -436,10 +436,10 @@
               </span>
             </div>
 
-            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-1 flex gap-1">
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-1 flex gap-1 overflow-x-auto scrollbar-hide">
               <button
                 id="mode-std"
-                class="flex-1 py-2 rounded-lg text-[11px] font-bold
+                class="flex-shrink-0 px-3 py-2 rounded-lg text-[11px] font-bold
                        flex items-center justify-center gap-2"
                 type="button"
               >
@@ -448,7 +448,7 @@
 
               <button
                 id="mode-SL3"
-                class="flex-1 py-2 rounded-lg text-[11px] font-bold
+                class="flex-shrink-0 px-3 py-2 rounded-lg text-[11px] font-bold
                        flex items-center justify-center gap-2"
                 type="button"
               >
@@ -457,7 +457,7 @@
 
               <button
                 id="mode-SRG"
-                class="flex-1 py-2 rounded-lg text-[11px] font-bold
+                class="flex-shrink-0 px-3 py-2 rounded-lg text-[11px] font-bold
                        flex items-center justify-center gap-2"
                 type="button"
               >
@@ -466,7 +466,7 @@
 
               <button
                 id="mode-PML"
-                class="flex-1 py-2 rounded-lg text-[11px] font-bold
+                class="flex-shrink-0 px-3 py-2 rounded-lg text-[11px] font-bold
                        flex items-center justify-center gap-2"
                 type="button"
               >
@@ -475,11 +475,20 @@
 
               <button
                 id="mode-BYS"
-                class="flex-1 py-2 rounded-lg text-[11px] font-bold
+                class="flex-shrink-0 px-3 py-2 rounded-lg text-[11px] font-bold
                        flex items-center justify-center gap-2"
                 type="button"
               >
                 <span>BYS/KBM</span>
+              </button>
+
+              <button
+                id="mode-KM8"
+                class="flex-shrink-0 px-3 py-2 rounded-lg text-[11px] font-bold
+                       flex items-center justify-center gap-2"
+                type="button"
+              >
+                <span>KM8/9</span>
               </button>
             </div>
 
@@ -778,10 +787,10 @@
               </span>
             </div>
 
-            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-1 flex gap-1">
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-1 flex gap-1 overflow-x-auto scrollbar-hide">
               <button
                 id="search-mode-std"
-                class="flex-1 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2"
+                class="flex-shrink-0 px-3 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2"
                 type="button"
               >
                 <span>CPJF</span>
@@ -789,7 +798,7 @@
 
               <button
                 id="search-mode-SL3"
-                class="flex-1 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2"
+                class="flex-shrink-0 px-3 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2"
                 type="button"
               >
                 <span>SL3</span>
@@ -797,7 +806,7 @@
 
               <button
                 id="search-mode-SRG"
-                class="flex-1 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2"
+                class="flex-shrink-0 px-3 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2"
                 type="button"
               >
                 <span>SRG</span>
@@ -805,7 +814,7 @@
 
               <button
                 id="search-mode-PML"
-                class="flex-1 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2"
+                class="flex-shrink-0 px-3 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2"
                 type="button"
               >
                 <span>PML</span>
@@ -813,10 +822,18 @@
 
               <button
                 id="search-mode-BYS"
-                class="flex-1 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2"
+                class="flex-shrink-0 px-3 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2"
                 type="button"
               >
                 <span>BYS/KBM</span>
+              </button>
+
+              <button
+                id="search-mode-KM8"
+                class="flex-shrink-0 px-3 py-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2"
+                type="button"
+              >
+                <span>KM8/9</span>
               </button>
             </div>
           </div>
@@ -1069,8 +1086,20 @@
         class="absolute top-3 left-3 z-[90] w-11 h-11 rounded-full
                bg-white/10 hover:bg-white/20 text-white flex items-center
                justify-center active:scale-95"
-        type="button">
+        type="button"
+        title="Coret Gambar">
         <svg class="w-6 h-6"><use href="#ic-pen"></use></svg>
+      </button>
+
+      <button id="lb-crop-toggle"
+        class="absolute top-3 left-16 z-[90] w-11 h-11 rounded-full
+               bg-white/10 hover:bg-white/20 text-white flex items-center
+               justify-center active:scale-95"
+        type="button"
+        title="Potong Gambar">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 2v14h14M2 8h14v14" />
+        </svg>
       </button>
 
       <button id="lb-close"
@@ -1136,6 +1165,21 @@
         <button id="lb-draw-save" type="button"
           class="px-3 h-9 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold active:scale-95">
           Simpan
+        </button>
+      </div>
+
+      <div id="lbCropBar"
+        class="hidden absolute bottom-3 left-1/2 -translate-x-1/2 z-[95]
+               px-4 py-2 rounded-2xl bg-slate-950/70 border border-slate-800 backdrop-blur-sm
+               flex items-center gap-2">
+        <span class="text-xs text-white/95 font-bold mr-1">Tarik kotak untuk memotong</span>
+        <button id="lb-crop-cancel" type="button"
+          class="px-3 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-extrabold active:scale-95">
+          Batal
+        </button>
+        <button id="lb-crop-save" type="button"
+          class="px-3 h-9 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold active:scale-95">
+          Potong
         </button>
       </div>
     </div>
@@ -1211,6 +1255,9 @@
   <script src="/config.js"></script>
   <script src="/smg_diag.js"></script>
   <script src="/smg_storage.js"></script>
+  <script src="/smg_normalizer.js"></script>
+  <script src="/smg_uploader.js"></script>
+  <script src="/smg_store.js"></script>
   <script src="/smg_compress.js"></script>
   <script src="/smg_lightbox.js"></script>
   <script src="/app.js"></script>

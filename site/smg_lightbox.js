@@ -34,8 +34,9 @@
     active: false,
     baseImg: null,
     cropping: false,
-    startX: 0,
-    startY: 0,
+    dragMode: "",
+    dragOffsetX: 0,
+    dragOffsetY: 0,
     cropLeft: 0,
     cropTop: 0,
     cropWidth: 0,
@@ -138,6 +139,7 @@
     lbCrop.active = false;
     lbCrop.baseImg = null;
     lbCrop.cropping = false;
+    lbCrop.dragMode = "";
     setSaving(false);
     setNavDisabled(false);
   }
@@ -159,23 +161,24 @@
       lbCrop.active = true;
       lbCrop.baseImg = img;
       lbCrop.cropping = false;
-      lbCrop.cropWidth = 0;
-      lbCrop.cropHeight = 0;
+      lbCrop.dragMode = "";
       setSaving(false);
 
       cv.width = img.naturalWidth || img.width || 1;
       cv.height = img.naturalHeight || img.height || 1;
+
+      // Initialize crop box to 90% size of image (WhatsApp style)
+      lbCrop.cropLeft = cv.width * 0.05;
+      lbCrop.cropTop = cv.height * 0.05;
+      lbCrop.cropWidth = cv.width * 0.9;
+      lbCrop.cropHeight = cv.height * 0.9;
 
       cv.classList.remove("hidden");
       bar.classList.remove("hidden");
       setNavDisabled(true);
       syncCanvasCssToImage();
 
-      var ctx = cv.getContext("2d");
-      if (ctx) {
-        ctx.clearRect(0, 0, cv.width, cv.height);
-        ctx.drawImage(img, 0, 0, cv.width, cv.height);
-      }
+      redrawCropCanvas();
     };
     img.onerror = function () {
       deps.showToast("error", "Gagal memuat gambar untuk dipotong.");
@@ -281,15 +284,58 @@
     ctx.fillRect(0, 0, cv.width, cv.height);
 
     if (lbCrop.cropWidth > 4 && lbCrop.cropHeight > 4) {
+      var L = lbCrop.cropLeft;
+      var T = lbCrop.cropTop;
+      var W = lbCrop.cropWidth;
+      var H = lbCrop.cropHeight;
+      var R = L + W;
+      var B = T + H;
+
       ctx.drawImage(lbCrop.baseImg,
-                    lbCrop.cropLeft, lbCrop.cropTop, lbCrop.cropWidth, lbCrop.cropHeight,
-                    lbCrop.cropLeft, lbCrop.cropTop, lbCrop.cropWidth, lbCrop.cropHeight);
+                    L, T, W, H,
+                    L, T, W, H);
 
       ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 4;
       ctx.setLineDash([8, 4]);
-      ctx.strokeRect(lbCrop.cropLeft, lbCrop.cropTop, lbCrop.cropWidth, lbCrop.cropHeight);
+      ctx.strokeRect(L, T, W, H);
       ctx.setLineDash([]);
+
+      // Draw L-shaped corner handles (WhatsApp style)
+      var len = Math.max(20, cv.width * 0.04);
+      var handleWidth = Math.max(5, cv.width * 0.008);
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = handleWidth;
+      ctx.lineCap = "square";
+      ctx.lineJoin = "miter";
+
+      // TL
+      ctx.beginPath();
+      ctx.moveTo(L + len, T);
+      ctx.lineTo(L, T);
+      ctx.lineTo(L, T + len);
+      ctx.stroke();
+
+      // TR
+      ctx.beginPath();
+      ctx.moveTo(R - len, T);
+      ctx.lineTo(R, T);
+      ctx.lineTo(R, T + len);
+      ctx.stroke();
+
+      // BL
+      ctx.beginPath();
+      ctx.moveTo(L + len, B);
+      ctx.lineTo(L, B);
+      ctx.lineTo(L, B - len);
+      ctx.stroke();
+
+      // BR
+      ctx.beginPath();
+      ctx.moveTo(R - len, B);
+      ctx.lineTo(R, B);
+      ctx.lineTo(R, B - len);
+      ctx.stroke();
     }
   }
 
@@ -580,14 +626,51 @@
           try { e.preventDefault(); } catch (x2) {}
           var pt2 = pointFromEvent(e);
           if (!pt2) return;
-          lbCrop.cropping = true;
-          lbCrop.startX = pt2[0];
-          lbCrop.startY = pt2[1];
-          lbCrop.cropLeft = pt2[0];
-          lbCrop.cropTop = pt2[1];
-          lbCrop.cropWidth = 0;
-          lbCrop.cropHeight = 0;
-          try { cv.setPointerCapture(e.pointerId); } catch (y2) {}
+
+          var x = pt2[0];
+          var y = pt2[1];
+          var L = lbCrop.cropLeft;
+          var T = lbCrop.cropTop;
+          var W = lbCrop.cropWidth;
+          var H = lbCrop.cropHeight;
+          var R = L + W;
+          var B = T + H;
+
+          var rect = cv.getBoundingClientRect();
+          var clientW = rect && rect.width ? rect.width : 1;
+          var screenThresh = 40;
+          var thresh = screenThresh * (cv.width / Math.max(1, clientW));
+
+          var isTL = Math.abs(x - L) < thresh && Math.abs(y - T) < thresh;
+          var isTR = Math.abs(x - R) < thresh && Math.abs(y - T) < thresh;
+          var isBL = Math.abs(x - L) < thresh && Math.abs(y - B) < thresh;
+          var isBR = Math.abs(x - R) < thresh && Math.abs(y - B) < thresh;
+
+          if (isTL) {
+            lbCrop.dragMode = "TL";
+            lbCrop.cropping = true;
+          } else if (isTR) {
+            lbCrop.dragMode = "TR";
+            lbCrop.cropping = true;
+          } else if (isBL) {
+            lbCrop.dragMode = "BL";
+            lbCrop.cropping = true;
+          } else if (isBR) {
+            lbCrop.dragMode = "BR";
+            lbCrop.cropping = true;
+          } else if (x > L && x < R && y > T && y < B) {
+            lbCrop.dragMode = "move";
+            lbCrop.cropping = true;
+            lbCrop.dragOffsetX = x - L;
+            lbCrop.dragOffsetY = y - T;
+          } else {
+            lbCrop.dragMode = "";
+            lbCrop.cropping = false;
+          }
+
+          if (lbCrop.cropping) {
+            try { cv.setPointerCapture(e.pointerId); } catch (y2) {}
+          }
         }
       });
       on(cv, "pointermove", function (e) {
@@ -611,10 +694,49 @@
           try { e.preventDefault(); } catch (x4) {}
           var pt2 = pointFromEvent(e);
           if (!pt2) return;
-          lbCrop.cropLeft = Math.min(lbCrop.startX, pt2[0]);
-          lbCrop.cropTop = Math.min(lbCrop.startY, pt2[1]);
-          lbCrop.cropWidth = Math.abs(lbCrop.startX - pt2[0]);
-          lbCrop.cropHeight = Math.abs(lbCrop.startY - pt2[1]);
+
+          var x = Math.max(0, Math.min(cv.width, pt2[0]));
+          var y = Math.max(0, Math.min(cv.height, pt2[1]));
+          var L = lbCrop.cropLeft;
+          var T = lbCrop.cropTop;
+          var W = lbCrop.cropWidth;
+          var H = lbCrop.cropHeight;
+          var R = L + W;
+          var B = T + H;
+          var minSize = Math.max(30, cv.width * 0.05);
+
+          if (lbCrop.dragMode === "TL") {
+            var newL = Math.min(x, R - minSize);
+            var newT = Math.min(y, B - minSize);
+            lbCrop.cropLeft = newL;
+            lbCrop.cropTop = newT;
+            lbCrop.cropWidth = R - newL;
+            lbCrop.cropHeight = B - newT;
+          } else if (lbCrop.dragMode === "TR") {
+            var newR = Math.max(x, L + minSize);
+            var newT = Math.min(y, B - minSize);
+            lbCrop.cropTop = newT;
+            lbCrop.cropWidth = newR - L;
+            lbCrop.cropHeight = B - newT;
+          } else if (lbCrop.dragMode === "BL") {
+            var newL = Math.min(x, R - minSize);
+            var newB = Math.max(y, T + minSize);
+            lbCrop.cropLeft = newL;
+            lbCrop.cropWidth = R - newL;
+            lbCrop.cropHeight = newB - T;
+          } else if (lbCrop.dragMode === "BR") {
+            var newR = Math.max(x, L + minSize);
+            var newB = Math.max(y, T + minSize);
+            lbCrop.cropWidth = newR - L;
+            lbCrop.cropHeight = newB - T;
+          } else if (lbCrop.dragMode === "move") {
+            var newL = x - lbCrop.dragOffsetX;
+            var newT = y - lbCrop.dragOffsetY;
+            newL = Math.max(0, Math.min(cv.width - W, newL));
+            newT = Math.max(0, Math.min(cv.height - H, newT));
+            lbCrop.cropLeft = newL;
+            lbCrop.cropTop = newT;
+          }
           redrawCropCanvas();
         }
       });
@@ -626,6 +748,7 @@
         } else if (lbCrop.active) {
           try { e.preventDefault(); } catch (x6) {}
           lbCrop.cropping = false;
+          lbCrop.dragMode = "";
         }
       });
       on(cv, "pointercancel", function () {
@@ -634,6 +757,7 @@
           lbDraw.lastPt = null;
         } else if (lbCrop.active) {
           lbCrop.cropping = false;
+          lbCrop.dragMode = "";
         }
       });
     }

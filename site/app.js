@@ -375,6 +375,7 @@
   var MAX_WIDTH = parseInt(localStorage.getItem("SMG_SET_MAX_WIDTH"), 10) || 1000;
   var JPEG_QUALITY_START = parseFloat(localStorage.getItem("SMG_SET_QUALITY_START")) || 0.9;
   var TARGET_KB = parseInt(localStorage.getItem("SMG_SET_TARGET_KB"), 10) || 60;
+  var CAMERA_SOURCE = localStorage.getItem("SMG_SET_CAMERA_SOURCE") || "camera";
   var processingCount = 0;
   var uiLocked = false;
   var COMP = window.SMGCompress || {};
@@ -703,7 +704,14 @@
   function openCameraInput() {
     if (uiLocked) return;
     var inp = $("camera-input");
-    if (inp) inp.click();
+    if (inp) {
+      if (CAMERA_SOURCE === "gallery") {
+        inp.removeAttribute("capture");
+      } else {
+        inp.setAttribute("capture", "environment");
+      }
+      inp.click();
+    }
   }
 
   function makePhotoId() {
@@ -2418,6 +2426,7 @@ mid.appendChild(topRow);
     var armedEl = $("set-upload-armed");
     var limitEl = $("set-history-limit");
     var themeEl = $("set-app-theme");
+    var cameraSourceEl = $("set-camera-source");
 
     if (qualityEl) qualityEl.value = JPEG_QUALITY_START;
     if (widthEl) widthEl.value = MAX_WIDTH;
@@ -2425,6 +2434,7 @@ mid.appendChild(topRow);
     if (armedEl) armedEl.checked = !!uploadArmed;
     if (limitEl) limitEl.value = String(HISTORY_LIMIT);
     if (themeEl) themeEl.value = APP_THEME;
+    if (cameraSourceEl) cameraSourceEl.value = CAMERA_SOURCE;
   }
 
   function saveSettingsFromUI() {
@@ -2472,6 +2482,12 @@ mid.appendChild(topRow);
       localStorage.setItem("SMG_SET_APP_THEME", APP_THEME);
       applyTheme(APP_THEME);
     }
+    
+    var cameraSourceEl = $("set-camera-source");
+    if (cameraSourceEl) {
+      CAMERA_SOURCE = cameraSourceEl.value || "camera";
+      localStorage.setItem("SMG_SET_CAMERA_SOURCE", CAMERA_SOURCE);
+    }
 
     try {
       if (COMP.setConfig) {
@@ -2494,6 +2510,7 @@ mid.appendChild(topRow);
     localStorage.removeItem("SMG_SET_TARGET_KB");
     localStorage.removeItem("SMG_SET_HISTORY_LIMIT");
     localStorage.removeItem("SMG_SET_APP_THEME");
+    localStorage.removeItem("SMG_SET_CAMERA_SOURCE");
 
     GAS_API_URL = (CFG.GAS_API_URL || "").trim();
     API_KEY = (CFG.API_KEY || "").trim();
@@ -2502,6 +2519,7 @@ mid.appendChild(topRow);
     TARGET_KB = 60;
     HISTORY_LIMIT = 50;
     APP_THEME = "default";
+    CAMERA_SOURCE = "camera";
     applyTheme("default");
 
     try {

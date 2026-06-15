@@ -939,6 +939,19 @@
             </div>
           </div>
 
+          <div class="grid grid-cols-2 gap-3">
+            <!-- SUMBER FOTO / KAMERA -->
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-slate-450 uppercase tracking-wider">Sumber Foto / Kamera</label>
+              <select id="set-camera-source" class="w-full px-3 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white transition-all">
+                <option value="camera">Kamera Belakang (Langsung)</option>
+                <option value="gallery">Galeri / Pilih File</option>
+              </select>
+            </div>
+            <!-- EMPTY GRID CELL FOR BALANCE -->
+            <div class="space-y-1"></div>
+          </div>
+
           <div class="pt-3 border-t border-slate-100 flex gap-2">
             <button id="btn-save-settings" type="button" class="flex-1 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-550 hover:to-teal-450 text-white font-extrabold text-xs py-3 rounded-xl shadow active:scale-95 transition">SIMPAN PENGATURAN</button>
             <button id="btn-reset-settings" type="button" class="px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-3 rounded-xl border border-slate-200/80 active:scale-95 transition">RESET DEFAULT</button>

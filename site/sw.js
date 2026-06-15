@@ -19,7 +19,9 @@ const ASSETS = [
   "/manifest.webmanifest",
   "/icons/icon16.png",
   "/icons/icon48.png",
-  "/icons/icon128.png"
+  "/icons/icon128.png",
+  "https://cdn.tailwindcss.com",
+  "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
 ];
 
 self.addEventListener("install", (event) => {
@@ -59,9 +61,11 @@ self.addEventListener("fetch", (event) => {
 
       return fetch(req)
         .then((res) => {
-          // simpan copy untuk request yang aman dicache
-          const copy = res.clone();
-          caches.open(CACHE).then((cache) => cache.put(req, copy));
+          // simpan copy untuk request yang aman dicache (status 200 OK atau 0 opaque cross-origin)
+          if (res.status === 200 || res.status === 0) {
+            const copy = res.clone();
+            caches.open(CACHE).then((cache) => cache.put(req, copy));
+          }
           return res;
         })
         .catch(() => {

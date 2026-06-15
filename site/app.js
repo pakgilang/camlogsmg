@@ -1036,8 +1036,7 @@
     }
 
     if (ids.length === 0) {
-      capturedFiles = [];
-      if (cb) cb();
+      window.SMGStore.setCapturedFiles([], cb);
       return;
     }
 
@@ -1046,20 +1045,20 @@
         showToast("error", "Gagal memuat foto dari DB.");
       }
 
-      capturedFiles = [];
+      var files = [];
       for (var i = 0; i < meta.length; i++) {
         var m = meta[i];
         if (!m) continue;
         var idx = ids.indexOf(m.id);
         var dataUrl = (idx >= 0 && arr && arr[idx]) ? arr[idx] : "";
-        capturedFiles.push({
+        files.push({
           id: m.id,
           dataUrl: dataUrl,
           sizeKb: m.sizeKb || 0,
           jenis: m.jenis || "MATERIAL"
         });
       }
-      if (cb) cb();
+      window.SMGStore.setCapturedFiles(files, cb);
     });
   }
 

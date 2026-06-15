@@ -165,6 +165,12 @@
     }
   }
 
+  function setCapturedFiles(files, cb) {
+    state.capturedFiles = files || [];
+    notify();
+    persistAppState(cb);
+  }
+
   function savePO(payload, editIndex, cb) {
     if (editIndex >= 0 && editIndex < state.poQueue.length) {
       state.poQueue[editIndex] = payload;
@@ -263,6 +269,7 @@
     setUploadArmed: setUploadArmed,
     addPhoto: addPhoto,
     removePhoto: removePhoto,
+    setCapturedFiles: setCapturedFiles,
     savePO: savePO,
     updatePOQueue: updatePOQueue,
     deletePO: deletePO,
